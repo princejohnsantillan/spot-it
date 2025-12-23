@@ -56,7 +56,7 @@ final class DeckGenerator
 
     /**
      * The generated deck will have {$this->count} number of cards.
-     * Each card generated will have {$this->count} symbols in it.
+     * Each card generated will have {$this->perCard} symbols in it.
      *
      * @return Card[]
      */
@@ -66,7 +66,43 @@ final class DeckGenerator
             throw new \LogicException('Symbols must be set before generating a deck.');
         }
 
+        $n = $this->order;
         $deck = [];
+
+        // Card 0: Contains the first n+1 symbols (symbols 0 through n)
+        $card0 = new Card($this->perCard);
+        $card0->setSymbols(array_slice($this->symbols, 0, $n + 1));
+        $deck[] = $card0;
+
+        // Cards 1 through n: Each contains symbol 0 plus a "column" of symbols
+        for ($i = 0; $i < $n; $i++) {
+            $card = new Card($this->perCard);
+            $cardSymbols = [$this->symbols[0]];
+
+            for ($j = 0; $j < $n; $j++) {
+                $symbolIdx = ($n + 1) + $j + ($i * $n);
+                $cardSymbols[] = $this->symbols[$symbolIdx];
+            }
+
+            $card->setSymbols($cardSymbols);
+            $deck[] = $card;
+        }
+
+        // Remaining n² cards: Constructed using projective plane geometry
+        for ($s = 0; $s < $n; $s++) {
+            for ($t = 0; $t < $n; $t++) {
+                $card = new Card($this->perCard);
+                $cardSymbols = [$this->symbols[$s + 1]];
+
+                for ($k = 0; $k < $n; $k++) {
+                    $symbolIdx = ($n + 1) + (($t + $s * $k) % $n) + ($k * $n);
+                    $cardSymbols[] = $this->symbols[$symbolIdx];
+                }
+
+                $card->setSymbols($cardSymbols);
+                $deck[] = $card;
+            }
+        }
 
         return $deck;
     }

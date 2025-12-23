@@ -4,24 +4,28 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Contracts\Symbol;
+
 final class DeckGenerator
 {
-
     private int $count;
 
     private int $perCard;
 
+    /**
+     * @var Symbol[]
+     */
     private array $symbols;
 
-    public function __construct(private int $prime = 7)
+    public function __construct(private int $order = 7)
     {
-        $this->count = ($prime * $prime) + $prime + 1;
-        $this->perCard = $prime + 1;
+        $this->count = ($order * $order) + $order + 1;
+        $this->perCard = $order + 1;
     }
 
-    public function getPrime(): int
+    public function getOrder(): int
     {
-        return $this->prime;
+        return $this->order;
     }
 
     public function getCount(): int
@@ -36,7 +40,7 @@ final class DeckGenerator
 
     public function setSymbols(array $symbols): self
     {
-        if(count($symbols) !== $this->count) {
+        if (count($symbols) !== $this->count) {
             throw new \LogicException("The deck requires {$this->count} symbols.}");
         }
 
@@ -50,8 +54,20 @@ final class DeckGenerator
         return $this->symbols;
     }
 
+    /**
+     * The generated deck will have {$this->count} number of cards.
+     * Each card generated will have {$this->count} symbols in it.
+     *
+     * @return Card[]
+     */
     public function generate(): array
     {
-        return [];
+        if (empty($this->symbols)) {
+            throw new \LogicException('Symbols must be set before generating a deck.');
+        }
+
+        $deck = [];
+
+        return $deck;
     }
 }

@@ -11,9 +11,6 @@ final class Card
     /** @var Symbol[] $symbols  */
     private array $symbols;
 
-    /** @var string[] $symbolIds  */
-    private array $symbolIds;
-
     public function __construct(private int $count = 8){
 
     }
@@ -26,9 +23,7 @@ final class Card
             throw new \LogicException("This card needs {$this->count} unique symbols.");
         }
 
-        $this->symbols = $symbols;
-
-        $this->symbolIds = collect($this->symbols)->map(fn(Symbol $symbol) => $symbol->getId())->toArray();
+        $this->symbols =  collect($symbols)->mapWithKeys(fn(Symbol $symbol) => [$symbol->getId() => $symbol])->toArray();
 
         return $this;
     }
@@ -38,13 +33,26 @@ final class Card
         return $this->symbols;
     }
 
-    public function getSymbolIds(): array
-    {
-        return $this->symbolIds;
-    }
-
     public function contains(Symbol $symbol): bool
     {
-        return in_array($symbol->getId(), $this->getSymbolIds());
+        return in_array($symbol->getId(), array_keys($this->getSymbols()));
+    }
+
+
+    public function spotIt(Card $card): Symbol|false
+    {
+        $common =  array_intersect_key($this->getSymbols(), $card->getSymbols());
+
+        $count = count($common);
+
+        if($count === 0){
+            return false;
+        }
+
+        if($count > 1){
+            throw new \LogicException("Invalid cards: only one symbol should be spotted.");
+        }
+
+        return array_pop($common);
     }
 }

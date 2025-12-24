@@ -6,14 +6,10 @@ namespace App;
 
 final class Dealer
 {
-
     /**
-     * @param Card[] $deck
+     * @param  Card[]  $deck
      */
-    public function __construct(private array $deck)
-    {
-
-    }
+    public function __construct(private array $deck) {}
 
     public function shuffle(): Dealer
     {
@@ -22,6 +18,4 @@ final class Dealer
 
         return $this;
     }
-
-
 }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Decks;
 
-
 use App\Card;
 use App\DeckGenerator;
 use App\EmojiSymbol;

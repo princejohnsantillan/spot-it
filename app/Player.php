@@ -9,20 +9,20 @@ use App\Contracts\Symbol;
 final class Player
 {
     /**
-     * @param string $id The player's unique identifier.
-     * @param string $name The player's name.
-     * @param Card[] $hand The player's hand, the cards dealt to him.
+     * @param  string  $id  The player's unique identifier.
+     * @param  string  $name  The player's name.
+     * @param  Card[]  $hand  The player's hand, the cards dealt to him.
      */
     public function __construct(
         private string $id,
         private string $name,
         private array $hand = []
-    ){
-    }
+    ) {}
 
     public function setHand(array $hand): self
     {
         $this->hand = $hand;
+
         return $this;
     }
 
@@ -67,7 +67,7 @@ final class Player
 
         $top = array_pop($hand);
 
-        if($top->contains($symbol)){
+        if ($top->contains($symbol)) {
             $this->releaseTopCard();
         }
 

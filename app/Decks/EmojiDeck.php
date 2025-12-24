@@ -11,7 +11,7 @@ use App\EmojiSymbol;
 final class EmojiDeck
 {
     public const EMOJIS = [
-        '😂', '😊', '🙏', '🔥', '😍', '🎉', '😭',
+        '😂', '😊', '🙏', '🔥', '😍', '🎉', '😭', '🥰', '👍🏼', '🤣', '💯', '💀', '🤔',
     ];
 
     /**
@@ -25,6 +25,6 @@ final class EmojiDeck
             $symbols[] = new EmojiSymbol($emoji);
         }
 
-        return (new DeckGenerator(2))->setSymbols($symbols)->generate();
+        return (new DeckGenerator(3))->setSymbols($symbols)->generate();
     }
 }

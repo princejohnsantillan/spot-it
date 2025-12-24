@@ -51,7 +51,9 @@ test('any two cards share exactly one symbol', function () {
     for ($i = 0; $i < count($deck); $i++) {
         for ($j = $i + 1; $j < count($deck); $j++) {
             $commonSymbol = $deck[$i]->spotIt($deck[$j]);
-            expect($commonSymbol)->not->toBeFalse("Cards {$i} and {$j} should share exactly one symbol");
+
+            expect($deck[$i]->contains($commonSymbol))->toBe(true);
+            expect($deck[$j]->contains($commonSymbol))->toBe(true);
         }
     }
 });

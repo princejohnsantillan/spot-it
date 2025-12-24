@@ -8,7 +8,11 @@ use App\Contracts\Symbol;
 
 final class Card
 {
-    /** @var Symbol[] $symbols  */
+    /**
+     * An array of unique symbols.
+     *
+     * @var Symbol[] $symbols
+     */
     private array $symbols;
 
     public function __construct(private int $count = 8){
@@ -39,18 +43,15 @@ final class Card
     }
 
 
-    public function spotIt(Card $card): Symbol|false
+    /*
+     * Spot the one and only matching symbol on another card.
+     */
+    public function spotIt(Card $card): Symbol
     {
         $common =  array_intersect_key($this->getSymbols(), $card->getSymbols());
 
-        $count = count($common);
-
-        if($count === 0){
-            return false;
-        }
-
-        if($count > 1){
-            throw new \LogicException("Invalid cards: only one symbol should be spotted.");
+        if(count($common) !== 1){
+            throw new \LogicException("Invalid cards: strictly one symbol should be spotted.");
         }
 
         return array_pop($common);

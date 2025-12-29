@@ -47,6 +47,8 @@ final class SoloGameUi extends Component
 
     public ?string $pendingMatchSymbol = null;
 
+    public int $rotationSeed = 0;
+
     public function mount(): void
     {
         $this->resetGame();
@@ -60,6 +62,7 @@ final class SoloGameUi extends Component
         $this->isOver = false;
         $this->isAnimating = false;
         $this->pendingMatchSymbol = null;
+        $this->rotationSeed = random_int(1, PHP_INT_MAX);
 
         $deck = (new EmojiDeck)->generate();
 
@@ -220,6 +223,7 @@ final class SoloGameUi extends Component
         $this->finishedAt = null;
         $this->isAnimating = false;
         $this->pendingMatchSymbol = null;
+        $this->rotationSeed = 0;
 
         $this->resetSelections();
     }
@@ -255,6 +259,30 @@ final class SoloGameUi extends Component
         }
 
         return implode(' ', $parts);
+    }
+
+    /**
+     * @param  string[]  $card
+     * @return array<string, int>
+     */
+    public function rotationsForCard(string $scope, array $card): array
+    {
+        $degrees = [-28, -20, -12, -4, 4, 12, 20, 28];
+        $seed = $this->rotationSeed.'|'.$scope.'|'.implode('|', $card);
+
+        $symbols = array_values($card);
+
+        usort($symbols, function (string $a, string $b) use ($seed): int {
+            return (int) crc32($seed.'|'.$a) <=> (int) crc32($seed.'|'.$b);
+        });
+
+        $rotations = [];
+
+        foreach ($symbols as $index => $symbol) {
+            $rotations[$symbol] = $degrees[$index % count($degrees)];
+        }
+
+        return $rotations;
     }
 
     public function render(): View

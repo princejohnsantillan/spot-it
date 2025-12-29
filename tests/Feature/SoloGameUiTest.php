@@ -76,3 +76,21 @@ it('shows the game duration when the game is finished', function () {
         Carbon::setTestNow();
     }
 });
+
+it('assigns stable, unique rotations for each symbol on a card', function () {
+    $component = Livewire::test(SoloGameUi::class)->set('rotationSeed', 123);
+
+    $card = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+    $first = $component->instance()->rotationsForCard('pile', $card);
+    $second = $component->instance()->rotationsForCard('pile', $card);
+
+    expect($first)->toBe($second);
+    expect(array_values($first))->toHaveCount(8);
+    expect(array_unique(array_values($first)))->toHaveCount(8);
+
+    $component->set('rotationSeed', 456);
+    $third = $component->instance()->rotationsForCard('pile', $card);
+
+    expect($third)->not->toBe($first);
+});

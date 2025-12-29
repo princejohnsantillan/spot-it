@@ -6,7 +6,7 @@ namespace App\Decks;
 
 use App\Card;
 use App\DeckGenerator;
-use App\EmojiSymbol;
+use App\Symbols\EmojiSymbol;
 
 final class EmojiDeck
 {

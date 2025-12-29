@@ -1,7 +1,7 @@
 <?php
 
 use App\DeckGenerator;
-use App\EmojiSymbol;
+use App\Symbols\EmojiSymbol;
 
 test('generates correct number of cards', function () {
     $order = 2;
@@ -50,7 +50,7 @@ test('any two cards share exactly one symbol', function () {
     // Check all pairs of cards
     for ($i = 0; $i < count($deck); $i++) {
         for ($j = $i + 1; $j < count($deck); $j++) {
-            $commonSymbol = $deck[$i]->spotIt($deck[$j]);
+            $commonSymbol = $deck[$i]->spotItSymbol($deck[$j]);
 
             expect($deck[$i]->contains($commonSymbol))->toBe(true);
             expect($deck[$j]->contains($commonSymbol))->toBe(true);
@@ -74,10 +74,10 @@ test('works with larger deck of order 3', function () {
     expect($deck[0]->getSymbols())->toHaveCount(4); // 3 + 1 = 4
 
     // Verify the spot-it property for a sample of pairs
-    $commonSymbol = $deck[0]->spotIt($deck[1]);
+    $commonSymbol = $deck[0]->spotItSymbol($deck[1]);
     expect($commonSymbol)->not->toBeFalse();
 
-    $commonSymbol = $deck[5]->spotIt($deck[10]);
+    $commonSymbol = $deck[5]->spotItSymbol($deck[10]);
     expect($commonSymbol)->not->toBeFalse();
 });
 

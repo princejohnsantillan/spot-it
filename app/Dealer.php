@@ -9,7 +9,15 @@ final class Dealer
     /**
      * @param  Card[]  $deck
      */
-    public function __construct(private array $deck) {}
+    public function __construct(private array &$deck) {}
+
+    /**
+     * @param  Card[]  $deck
+     */
+    public static function using(array &$deck): Dealer
+    {
+        return new static($deck);
+    }
 
     public function shuffle(): Dealer
     {
@@ -18,4 +26,59 @@ final class Dealer
 
         return $this;
     }
+
+    public function deal(&...$piles): array
+    {
+        $pilesCount = count($piles);
+
+        if($pilesCount === 0){
+            return $this->deck;
+        }
+
+        while($this->deck !== []){
+            $cardsCount = count($this->deck);
+
+            if($cardsCount/$pilesCount < 1){
+                break;
+            }
+
+            foreach($piles as &$pile){
+
+                $top = array_pop($this->deck);
+
+                if($top === null){
+                    break;
+                }
+
+                $pile[] = $top;
+            }
+        }
+
+        return $this->deck;
+    }
+
+    public function peak(): Card
+    {
+        $deck = $this->deck;
+
+        return array_pop($deck);
+    }
+
+    public function top(): Card
+    {
+        return array_pop($this->deck);
+    }
+
+    public function shuffleAndTop(): Card
+    {
+        $this->shuffle();
+        return $this->top();
+    }
+
+    public function shuffleAndDeal(& ...$piles): array
+    {
+        $this->shuffle();
+        return $this->deal(...$piles);
+    }
+
 }

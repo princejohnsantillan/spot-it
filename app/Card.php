@@ -43,7 +43,7 @@ final class Card
     /*
      * Spot the one and only matching symbol on another card.
      */
-    public function spotIt(Card $card): Symbol
+    public function spotItSymbol(Card $card): Symbol
     {
         $common = array_intersect_key($this->getSymbols(), $card->getSymbols());
 

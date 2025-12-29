@@ -9,22 +9,21 @@ use App\Contracts\Symbol;
 final class Player
 {
     /**
+     * The player's hand, the cards dealt to him.
+     *
+     * @var Card[] $hand
+     */
+    public array $hand = [];
+
+    /**
      * @param  string  $id  The player's unique identifier.
      * @param  string  $name  The player's name.
-     * @param  Card[]  $hand  The player's hand, the cards dealt to him.
+     * @param  Card[]  $hand
      */
     public function __construct(
         private string $id,
         private string $name,
-        private array $hand = []
     ) {}
-
-    public function setHand(array $hand): self
-    {
-        $this->hand = $hand;
-
-        return $this;
-    }
 
     public function getId(): string
     {
@@ -34,11 +33,6 @@ final class Player
     public function getName(): string
     {
         return $this->name;
-    }
-
-    public function getHand(): array
-    {
-        return $this->hand;
     }
 
     public function countHand(): int
@@ -53,24 +47,21 @@ final class Player
         return $this->hand;
     }
 
-    public function releaseTopCard(): Card
+    public function peak(): Card
+    {
+        $hand = $this->hand;
+
+        return array_pop($hand);
+    }
+
+    public function top(): Card
     {
         return array_pop($this->hand);
     }
 
-    /**
-     * Release the top card if the symbol is on it.
-     */
-    public function spotAndRelease(Symbol $symbol): Card|false
+
+    public function spotIt(Card $card, Symbol $symbol): bool
     {
-        $hand = $this->hand;
-
-        $top = array_pop($hand);
-
-        if ($top->contains($symbol)) {
-            $this->releaseTopCard();
-        }
-
-        return false;
+        return $this->peak()->spotItSymbol($card)->getId() === $symbol->getId();
     }
 }

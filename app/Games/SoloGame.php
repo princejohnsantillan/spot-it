@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App;
+namespace App\Games;
+
+use App\Card;
+use App\Player;
 
 final class SoloGame
 {

@@ -41,7 +41,7 @@ final class DeckGenerator
     public function setSymbols(array $symbols): self
     {
         if (count($symbols) !== $this->count) {
-            throw new \LogicException("The deck requires {$this->count} symbols.}");
+            throw new \LogicException("The deck requires {$this->count} symbols.");
         }
 
         $this->symbols = $symbols;

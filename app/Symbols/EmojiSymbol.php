@@ -2,15 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App;
+namespace App\Symbols;
 
+use App\Contracts;
 use App\Contracts\Symbol;
 
 final class EmojiSymbol implements Contracts\Symbol
 {
-    public function __construct(private string $emoji)
-    {
-    }
+    public function __construct(private string $emoji) {}
 
     public function getId(): string
     {

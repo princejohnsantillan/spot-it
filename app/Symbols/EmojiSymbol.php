@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Symbols;
 
+use App\Concerns\HasSymbol;
 use App\Contracts;
-use App\Contracts\Symbol;
 
 final class EmojiSymbol implements Contracts\Symbol
 {
-    public function __construct(private string $emoji) {}
+    use HasSymbol;
+
+    public function __construct(
+        private string $emoji
+    ) {}
 
     public function getId(): string
     {
@@ -19,15 +23,5 @@ final class EmojiSymbol implements Contracts\Symbol
     public function render(): string
     {
         return $this->emoji;
-    }
-
-    public function isSymbol(Symbol $symbol): bool
-    {
-        return $this->getId() === $symbol->getId();
-    }
-
-    public function __toString(): string
-    {
-        return $this->getId();
     }
 }

@@ -31,7 +31,7 @@ test('each card has correct number of symbols', function () {
     $deck = $generator->generate();
 
     foreach ($deck as $card) {
-        expect($card->getSymbols())->toHaveCount($generator->getPerCard());
+        expect($card->getSymbols())->toHaveCount($generator->getSymbolsPerCard());
     }
 });
 
@@ -86,7 +86,7 @@ test('works with default order of 7', function () {
 
     expect($generator->getOrder())->toBe(7);
     expect($generator->getCount())->toBe(57); // 7² + 7 + 1 = 57
-    expect($generator->getPerCard())->toBe(8); // 7 + 1 = 8
+    expect($generator->getSymbolsPerCard())->toBe(8); // 7 + 1 = 8
 
     $symbols = [];
     for ($i = 0; $i < $generator->getCount(); $i++) {

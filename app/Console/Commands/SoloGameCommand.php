@@ -8,6 +8,11 @@ use App\Games\SoloGame;
 use App\Player;
 use Illuminate\Console\Command;
 
+use function Laravel\Prompts\clear;
+use function Laravel\Prompts\info;
+use function Laravel\Prompts\table;
+use function Laravel\Prompts\text;
+
 class SoloGameCommand extends Command
 {
     /**
@@ -29,26 +34,33 @@ class SoloGameCommand extends Command
      */
     public function handle()
     {
-        $game = new SoloGame(EmojiDeck::generate(), new Player('Prince', 'Prince'));
+        $deck = new EmojiDeck;
+
+        $game = new SoloGame($deck->generate(), new Player('Solo', 'Solo'));
 
         $game->start();
 
-        while(! $game->isOver()){
+        while (! $game->isOver()) {
+            clear();
 
-            dump($game->getStatus());
+            table(
+                headers: ['Well', 'Hand'],
+                rows: [$game->getStatus()]
+            );
 
-            $this->line(PHP_EOL.'WELL');
-            $this->line(collect($game->peak()->getSymbols())->map(fn(Symbol $symbol) => $symbol->render())->implode('    '));
+            info(PHP_EOL.'WELL');
+            info(collect($game->peak()->getSymbols())->map(fn (Symbol $symbol) => $symbol->render())->implode('    '));
 
+            info(PHP_EOL.'HAND');
+            info(collect($game->getPlayer()->peak()->getSymbols())->map(fn (Symbol $symbol) => $symbol->render())->implode('    '));
 
-            $this->line(PHP_EOL.'HAND');
-            $this->line(collect($game->getPlayer()->peak()->getSymbols())->map(fn(Symbol $symbol) => $symbol->render())->implode('    '));
+            $symbol = $deck->find(trim(text('Symbol', required: true)));
 
-            $symbol = $this->ask("Symbol");
-
-            $game->spotted($symbol);
+            if ($symbol !== null) {
+                $game->spotted($symbol);
+            }
         }
 
-        $this->info('You took: '.$game->getDuration().' seconds');
+        info('You took: '.$game->getDuration().' seconds');
     }
 }

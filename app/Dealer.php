@@ -16,7 +16,7 @@ final class Dealer
      */
     public static function using(array &$deck): Dealer
     {
-        return new static($deck);
+        return new self($deck);
     }
 
     public function shuffle(): Dealer
@@ -31,22 +31,22 @@ final class Dealer
     {
         $pilesCount = count($piles);
 
-        if($pilesCount === 0){
+        if ($pilesCount === 0) {
             return $this->deck;
         }
 
-        while($this->deck !== []){
+        while ($this->deck !== []) {
             $cardsCount = count($this->deck);
 
-            if($cardsCount/$pilesCount < 1){
+            if ($cardsCount / $pilesCount < 1) {
                 break;
             }
 
-            foreach($piles as &$pile){
+            foreach ($piles as &$pile) {
 
                 $top = array_pop($this->deck);
 
-                if($top === null){
+                if ($top === null) {
                     break;
                 }
 
@@ -70,13 +70,14 @@ final class Dealer
     public function shuffleAndTop(): Card
     {
         $this->shuffle();
+
         return $this->top();
     }
 
-    public function shuffleAndDeal(& ...$piles): array
+    public function shuffleAndDeal(&...$piles): array
     {
         $this->shuffle();
+
         return $this->deal(...$piles);
     }
-
 }

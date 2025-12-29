@@ -12,7 +12,7 @@ use App\Player;
 final class SoloGame
 {
     /**
-     * @var Card[] $discardPile
+     * @var Card[]
      */
     private array $discardPile = [];
 
@@ -41,30 +41,28 @@ final class SoloGame
         return $this;
     }
 
-
     public function getPlayer(): Player
     {
         return $this->player;
     }
 
-
-    public function peak(): Card{
+    public function peak(): Card
+    {
         return end($this->discardPile);
     }
 
-    public function spotted(Symbol|string $symbol): void
+    public function spotted(Symbol $symbol): void
     {
-        if($this->player->spotIt($this->peak(), $symbol)){
+        if ($this->player->spotIt($this->peak(), $symbol)) {
             $this->discardPile[] = $this->player->top();
         }
-
 
         $this->gameCheck();
     }
 
     private function gameCheck(): void
     {
-        if($this->player->countHand() === 0){
+        if ($this->player->countHand() === 0) {
             $this->endTime = time();
         }
     }
@@ -79,7 +77,8 @@ final class SoloGame
         return $this->endTime - $this->startTime;
     }
 
-    public function getStatus(): array{
+    public function getStatus(): array
+    {
         return [
             'pile' => count($this->discardPile),
             'hand' => $this->player->countHand(),

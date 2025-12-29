@@ -11,7 +11,7 @@ final class Player
     /**
      * The player's hand, the cards dealt to him.
      *
-     * @var Card[] $hand
+     * @var Card[]
      */
     public array $hand = [];
 
@@ -57,11 +57,8 @@ final class Player
         return array_pop($this->hand);
     }
 
-
-    public function spotIt(Card $card, Symbol|string $symbol): bool
+    public function spotIt(Card $card, Symbol $symbol): bool
     {
-        $symbol = is_string($symbol) ? $symbol : $symbol->getId();
-
-        return $this->peak()->spotItSymbol($card)->getId() === $symbol;
+        return $this->peak()->spotItSymbol($card)->isSymbol($symbol);
     }
 }

@@ -8,6 +8,7 @@ use App\Card;
 use App\Dealer;
 use App\Decks\EmojiDeck;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Carbon;
 use Livewire\Component;
 
 final class SoloGameUi extends Component
@@ -35,13 +36,24 @@ final class SoloGameUi extends Component
 
     public ?string $selectedHandSymbol = null;
 
+    public bool $hasStarted = false;
+
+    public ?int $startedAt = null;
+
+    public ?int $finishedAt = null;
+
     public function mount(): void
     {
-        $this->startNewGame();
+        $this->resetGame();
     }
 
     public function startNewGame(): void
     {
+        $this->hasStarted = true;
+        $this->startedAt = Carbon::now()->timestamp;
+        $this->finishedAt = null;
+        $this->isOver = false;
+
         $deck = (new EmojiDeck)->generate();
 
         $dealer = Dealer::using($deck)->shuffle();
@@ -61,6 +73,10 @@ final class SoloGameUi extends Component
 
     public function selectPileSymbol(string $symbol): void
     {
+        if (! $this->hasStarted) {
+            return;
+        }
+
         $this->selectedPileSymbol = $this->selectedPileSymbol === $symbol ? null : $symbol;
 
         $this->resolveSelection();
@@ -68,9 +84,26 @@ final class SoloGameUi extends Component
 
     public function selectHandSymbol(string $symbol): void
     {
+        if (! $this->hasStarted) {
+            return;
+        }
+
         $this->selectedHandSymbol = $this->selectedHandSymbol === $symbol ? null : $symbol;
 
         $this->resolveSelection();
+    }
+
+    public function getDurationProperty(): ?string
+    {
+        if (! $this->hasStarted || $this->startedAt === null || $this->finishedAt === null) {
+            return null;
+        }
+
+        $seconds = max(0, $this->finishedAt - $this->startedAt);
+
+        return $seconds >= 3600
+            ? gmdate('H:i:s', $seconds)
+            : gmdate('i:s', $seconds);
     }
 
     private function resolveSelection(): void
@@ -122,12 +155,30 @@ final class SoloGameUi extends Component
     {
         $this->handCard = $this->hand !== [] ? end($this->hand) : [];
         $this->isOver = $this->hand === [];
+
+        if ($this->hasStarted && $this->isOver && $this->finishedAt === null) {
+            $this->finishedAt = Carbon::now()->timestamp;
+        }
     }
 
     private function resetSelections(): void
     {
         $this->selectedPileSymbol = null;
         $this->selectedHandSymbol = null;
+    }
+
+    private function resetGame(): void
+    {
+        $this->pileCard = [];
+        $this->hand = [];
+        $this->handCard = [];
+        $this->pileCount = 0;
+        $this->isOver = false;
+        $this->hasStarted = false;
+        $this->startedAt = null;
+        $this->finishedAt = null;
+
+        $this->resetSelections();
     }
 
     /**

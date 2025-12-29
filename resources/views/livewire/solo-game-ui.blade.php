@@ -14,96 +14,105 @@
                     wire:click="startNewGame"
                     class="rounded-sm border border-[#19140035] bg-white px-4 py-2 text-sm font-medium leading-normal shadow-[0px_0px_1px_0px_rgba(0,0,0,0.03),0px_1px_2px_0px_rgba(0,0,0,0.06)] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:bg-[#161615] dark:hover:border-[#62605b]"
                 >
-                    New game
+                    New Game
                 </button>
+            </div>
+        </div>
 
-                <a
-                    href="/"
-                    class="rounded-sm border border-transparent px-4 py-2 text-sm font-medium leading-normal hover:border-[#19140035] dark:hover:border-[#3E3E3A]"
+        @if (! $hasStarted)
+            <div class="flex flex-1 items-center justify-center py-16">
+                <div class="flex w-full max-w-md flex-col items-center gap-4 text-center">
+                    <div class="text-lg font-semibold">Ready when you are</div>
+                    <div class="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                        Click <span class="font-medium text-[#1b1b18] dark:text-[#EDEDEC]">New Game</span> to deal the first cards.
+                    </div>
+                </div>
+            </div>
+        @else
+            <div class="flex items-center gap-4 text-sm">
+                <div class="rounded-sm border border-[#19140035] bg-white px-3 py-1.5 dark:border-[#3E3E3A] dark:bg-[#161615]">
+                    <span class="font-medium">Pile:</span> {{ $pileCount }}
+                </div>
+                <div class="rounded-sm border border-[#19140035] bg-white px-3 py-1.5 dark:border-[#3E3E3A] dark:bg-[#161615]">
+                    <span class="font-medium">Cards left:</span> {{ count($hand) }}
+                </div>
+            </div>
+
+            <div
+                x-data="{ shake: false }"
+                x-on:spotit-shake.window="shake = true; setTimeout(() => shake = false, 350)"
+                class="grid gap-6 lg:grid-cols-2"
+            >
+                <section
+                    class="rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
+                    x-bind:class="{ 'spotit-shake': shake }"
                 >
-                    Home
-                </a>
-            </div>
-        </div>
-
-        <div class="flex items-center gap-4 text-sm">
-            <div class="rounded-sm border border-[#19140035] bg-white px-3 py-1.5 dark:border-[#3E3E3A] dark:bg-[#161615]">
-                <span class="font-medium">Pile:</span> {{ $pileCount }}
-            </div>
-            <div class="rounded-sm border border-[#19140035] bg-white px-3 py-1.5 dark:border-[#3E3E3A] dark:bg-[#161615]">
-                <span class="font-medium">Cards left:</span> {{ count($hand) }}
-            </div>
-        </div>
-
-        <div
-            x-data="{ shake: false }"
-            x-on:spotit-shake.window="shake = true; setTimeout(() => shake = false, 350)"
-            class="grid gap-6 lg:grid-cols-2"
-        >
-            <section
-                class="rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
-                x-bind:class="{ 'spotit-shake': shake }"
-            >
-                <div class="mb-4 flex items-center justify-between gap-4">
-                    <h2 class="text-sm font-semibold tracking-wide text-[#706f6c] dark:text-[#A1A09A]">PILE</h2>
-                    <div class="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                        Selected:
-                        <span class="font-medium text-[#1b1b18] dark:text-[#EDEDEC]">{{ $selectedPileSymbol ?? '—' }}</span>
+                    <div class="mb-4 flex items-center justify-between gap-4">
+                        <h2 class="text-sm font-semibold tracking-wide text-[#706f6c] dark:text-[#A1A09A]">PILE</h2>
+                        <div class="text-xs text-[#706f6c] dark:text-[#A1A09A]">
+                            Selected:
+                            <span class="font-medium text-[#1b1b18] dark:text-[#EDEDEC]">{{ $selectedPileSymbol ?? '—' }}</span>
+                        </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-2 gap-3">
-                    @foreach ($pileCard as $symbol)
-                        <button
-                            type="button"
-                            wire:key="pile-{{ $symbol }}"
-                            wire:click="selectPileSymbol(@js($symbol))"
-                            class="flex aspect-square items-center justify-center rounded-md border border-[#19140035] bg-[#FDFDFC] text-4xl shadow-sm transition-all hover:border-[#1915014a] dark:border-[#3E3E3A] dark:bg-[#0a0a0a] dark:hover:border-[#62605b]"
-                            @class([
-                                'ring-4 ring-blue-500' => $selectedPileSymbol === $symbol,
-                            ])
-                        >
-                            {{ $symbol }}
-                        </button>
-                    @endforeach
-                </div>
-            </section>
-
-            <section
-                class="rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
-                x-bind:class="{ 'spotit-shake': shake }"
-            >
-                <div class="mb-4 flex items-center justify-between gap-4">
-                    <h2 class="text-sm font-semibold tracking-wide text-[#706f6c] dark:text-[#A1A09A]">YOUR HAND</h2>
-                    <div class="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                        Selected:
-                        <span class="font-medium text-[#1b1b18] dark:text-[#EDEDEC]">{{ $selectedHandSymbol ?? '—' }}</span>
-                    </div>
-                </div>
-
-                @if ($isOver)
-                    <div class="rounded-md border border-[#19140035] bg-[#FDFDFC] p-6 text-center dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                        <div class="text-lg font-semibold">Game over</div>
-                        <div class="mt-1 text-sm text-[#706f6c] dark:text-[#A1A09A]">Hit “New game” to play again.</div>
-                    </div>
-                @else
                     <div class="grid grid-cols-2 gap-3">
-                        @foreach ($handCard as $symbol)
+                        @foreach ($pileCard as $symbol)
                             <button
                                 type="button"
-                                wire:key="hand-{{ $symbol }}"
-                                wire:click="selectHandSymbol(@js($symbol))"
-                                class="flex aspect-square items-center justify-center rounded-md border border-[#19140035] bg-[#FDFDFC] text-4xl shadow-sm transition-all hover:border-[#1915014a] dark:border-[#3E3E3A] dark:bg-[#0a0a0a] dark:hover:border-[#62605b]"
+                                wire:key="pile-{{ $symbol }}"
+                                wire:click="selectPileSymbol(@js($symbol))"
                                 @class([
-                                    'ring-4 ring-emerald-500' => $selectedHandSymbol === $symbol,
+                                    'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-4xl shadow-sm transition-all hover:border-[#1915014a] dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
+                                    'border-[#19140035] dark:border-[#3E3E3A]' => $selectedPileSymbol !== $symbol,
+                                    'border-transparent ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedPileSymbol === $symbol,
                                 ])
                             >
                                 {{ $symbol }}
                             </button>
                         @endforeach
                     </div>
-                @endif
-            </section>
-        </div>
+                </section>
+
+                <section
+                    class="rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
+                    x-bind:class="{ 'spotit-shake': shake }"
+                >
+                    <div class="mb-4 flex items-center justify-between gap-4">
+                        <h2 class="text-sm font-semibold tracking-wide text-[#706f6c] dark:text-[#A1A09A]">YOUR HAND</h2>
+                        <div class="text-xs text-[#706f6c] dark:text-[#A1A09A]">
+                            Selected:
+                            <span class="font-medium text-[#1b1b18] dark:text-[#EDEDEC]">{{ $selectedHandSymbol ?? '—' }}</span>
+                        </div>
+                    </div>
+
+                    @if ($isOver)
+                        <div class="rounded-md border border-[#19140035] bg-[#FDFDFC] p-6 text-center dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
+                            <div class="text-lg font-semibold">Game over</div>
+                            @if ($duration)
+                                <div class="mt-1 text-sm text-[#706f6c] dark:text-[#A1A09A]">Duration: {{ $duration }}</div>
+                            @endif
+                            <div class="mt-1 text-sm text-[#706f6c] dark:text-[#A1A09A]">Hit “New Game” to play again.</div>
+                        </div>
+                    @else
+                        <div class="grid grid-cols-2 gap-3">
+                            @foreach ($handCard as $symbol)
+                                <button
+                                    type="button"
+                                    wire:key="hand-{{ $symbol }}"
+                                    wire:click="selectHandSymbol(@js($symbol))"
+                                    @class([
+                                        'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-4xl shadow-sm transition-all hover:border-[#1915014a] dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
+                                        'border-[#19140035] dark:border-[#3E3E3A]' => $selectedHandSymbol !== $symbol,
+                                        'border-transparent ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedHandSymbol === $symbol,
+                                    ])
+                                >
+                                    {{ $symbol }}
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
+                </section>
+            </div>
+        @endif
     </div>
 </div>

@@ -32,3 +32,39 @@
 .spotit-shake {
     animation: spotit-shake 0.35s ease-in-out;
 }
+
+@keyframes spotit-match-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        box-shadow:
+            0 0 0 0 rgb(var(--spotit-ring-rgb) / 0),
+            0 0 0 0 rgb(var(--spotit-ring-offset-rgb) / 0);
+    }
+    50% {
+        transform: scale(1.06);
+        box-shadow:
+            0 0 0 6px rgb(var(--spotit-ring-rgb) / 0.75),
+            0 0 0 10px rgb(var(--spotit-ring-offset-rgb) / 1);
+    }
+}
+
+.spotit-match {
+    animation: spotit-match-pulse 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+    border-color: transparent;
+}
+
+.spotit-match-pile {
+    --spotit-ring-rgb: 14 165 233;
+    --spotit-ring-offset-rgb: 255 255 255;
+}
+
+.spotit-match-hand {
+    --spotit-ring-rgb: 16 185 129;
+    --spotit-ring-offset-rgb: 255 255 255;
+}
+
+.dark .spotit-match-pile,
+.dark .spotit-match-hand {
+    --spotit-ring-offset-rgb: 22 22 21;
+}

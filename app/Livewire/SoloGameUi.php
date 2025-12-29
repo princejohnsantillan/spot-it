@@ -117,17 +117,6 @@ final class SoloGameUi extends Component
     /**
      * @return string[]
      */
-    public function getNextHandCardProperty(): array
-    {
-        $count = count($this->hand);
-
-        if ($count < 2) {
-            return [];
-        }
-
-        return $this->hand[$count - 2];
-    }
-
     public function completeMatch(): void
     {
         if (! $this->hasStarted || ! $this->isAnimating || $this->pendingMatchSymbol === null) {

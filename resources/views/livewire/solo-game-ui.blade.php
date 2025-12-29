@@ -39,53 +39,18 @@
             </div>
 
             <div
-                x-data="{ shake: false, sliding: false }"
+                x-data="{ shake: false, matching: false }"
                 x-on:spotit-shake.window="shake = true; setTimeout(() => shake = false, 350)"
                 x-on:spotit-match.window="
-                    if (sliding) return;
+                    if (matching) return;
 
-                    const hand = $refs.handFace;
-                    const pile = $refs.pileFace;
+                    matching = true;
 
-                    if (!hand || !pile) return;
-
-                    sliding = true;
-                    $nextTick(() => {
-                        const handRect = hand.getBoundingClientRect();
-                        const pileRect = pile.getBoundingClientRect();
-
-                        const clone = hand.cloneNode(true);
-                        clone.style.position = 'fixed';
-                        clone.style.left = `${handRect.left}px`;
-                        clone.style.top = `${handRect.top}px`;
-                        clone.style.width = `${handRect.width}px`;
-                        clone.style.height = `${handRect.height}px`;
-                        clone.style.margin = '0';
-                        clone.style.zIndex = '50';
-                        clone.style.pointerEvents = 'none';
-                        document.body.appendChild(clone);
-
-                        hand.style.visibility = 'hidden';
-
-                        const deltaX = pileRect.left - handRect.left;
-                        const deltaY = pileRect.top - handRect.top;
-
-                        const animation = clone.animate(
-                            [
-                                { transform: 'translate(0px, 0px) scale(1)', opacity: 1 },
-                                { transform: `translate(${deltaX}px, ${deltaY}px) scale(0.98)`, opacity: 1 },
-                            ],
-                            { duration: 380, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' }
-                        );
-
-                        animation.finished
-                            .then(() => $wire.completeMatch())
-                            .finally(() => {
-                                clone.remove();
-                                hand.style.visibility = '';
-                                sliding = false;
-                            });
-                    });
+                    setTimeout(() => {
+                        $wire.completeMatch()
+                            .then(() => matching = false)
+                            .catch(() => matching = false);
+                    }, 360);
                 "
                 class="grid gap-6 lg:grid-cols-2"
             >
@@ -97,7 +62,7 @@
                         <h2 class="text-sm font-semibold tracking-wide text-[#706f6c] dark:text-[#A1A09A]">PILE</h2>
                     </div>
 
-                    <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]" x-ref="pileFace">
+                    <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]">
                         @php($pileRotations = $this->rotationsForCard('pile', $pileCard))
                         <div class="grid grid-cols-4 gap-3">
                         @foreach ($pileCard as $symbol)
@@ -109,8 +74,9 @@
                                 @class([
                                     'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
                                     'pointer-events-none opacity-70' => $isAnimating,
-                                    'border-[#19140035] dark:border-[#3E3E3A]' => $selectedPileSymbol !== $symbol,
-                                    'border-transparent ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedPileSymbol === $symbol,
+                                    'border-[#19140035] dark:border-[#3E3E3A]' => ! ($isAnimating && $pendingMatchSymbol === $symbol) && $selectedPileSymbol !== $symbol,
+                                    'border-transparent ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => ! ($isAnimating && $pendingMatchSymbol === $symbol) && $selectedPileSymbol === $symbol,
+                                    'spotit-match spotit-match-pile' => $isAnimating && $pendingMatchSymbol === $symbol,
                                 ])
                             >
                                 <span class="inline-block" style="transform: rotate({{ $pileRotations[$symbol] ?? 0 }}deg)">
@@ -139,49 +105,28 @@
                             <div class="mt-1 text-sm text-[#706f6c] dark:text-[#A1A09A]">Hit “New Game” to play again.</div>
                         </div>
                     @else
-                        <div class="relative">
-                            @if (count($hand) > 1)
-                                <div
-                                    class="absolute inset-0 translate-x-2 translate-y-2 rounded-md bg-[#EDEBE3] p-4 shadow-sm dark:bg-[#0b0b0b]"
-                                    aria-hidden="true"
-                                >
-                                    @php($nextHandRotations = $this->rotationsForCard('hand-next', $this->nextHandCard))
-                                    <div class="grid grid-cols-4 gap-3 opacity-80">
-                                        @foreach ($this->nextHandCard as $symbol)
-                                            <div
-                                                class="flex aspect-square items-center justify-center rounded-md border border-[#19140035] bg-[#FDFDFC] text-3xl shadow-sm sm:text-4xl dark:border-[#3E3E3A] dark:bg-[#0a0a0a]"
-                                            >
-                                                <span class="inline-block" style="transform: rotate({{ $nextHandRotations[$symbol] ?? 0 }}deg)">
-                                                    {{ $symbol }}
-                                                </span>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-
-                            <div class="relative rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]" x-ref="handFace">
-                                @php($handRotations = $this->rotationsForCard('hand', $handCard))
-                                <div class="grid grid-cols-4 gap-3">
-                                    @foreach ($handCard as $symbol)
-                                        <button
-                                            type="button"
-                                            wire:key="hand-{{ $symbol }}"
-                                            wire:click="selectHandSymbol(@js($symbol))"
-                                            @disabled($isAnimating)
-                                            @class([
-                                                'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
-                                                'pointer-events-none opacity-70' => $isAnimating,
-                                                'border-[#19140035] dark:border-[#3E3E3A]' => $selectedHandSymbol !== $symbol,
-                                                'border-transparent ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedHandSymbol === $symbol,
-                                            ])
-                                        >
-                                            <span class="inline-block" style="transform: rotate({{ $handRotations[$symbol] ?? 0 }}deg)">
-                                                {{ $symbol }}
-                                            </span>
-                                        </button>
-                                    @endforeach
-                                </div>
+                        <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]">
+                            @php($handRotations = $this->rotationsForCard('hand', $handCard))
+                            <div class="grid grid-cols-4 gap-3">
+                                @foreach ($handCard as $symbol)
+                                    <button
+                                        type="button"
+                                        wire:key="hand-{{ $symbol }}"
+                                        wire:click="selectHandSymbol(@js($symbol))"
+                                        @disabled($isAnimating)
+                                        @class([
+                                            'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
+                                            'pointer-events-none opacity-70' => $isAnimating,
+                                            'border-[#19140035] dark:border-[#3E3E3A]' => ! ($isAnimating && $pendingMatchSymbol === $symbol) && $selectedHandSymbol !== $symbol,
+                                            'border-transparent ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => ! ($isAnimating && $pendingMatchSymbol === $symbol) && $selectedHandSymbol === $symbol,
+                                            'spotit-match spotit-match-hand' => $isAnimating && $pendingMatchSymbol === $symbol,
+                                        ])
+                                    >
+                                        <span class="inline-block" style="transform: rotate({{ $handRotations[$symbol] ?? 0 }}deg)">
+                                            {{ $symbol }}
+                                        </span>
+                                    </button>
+                                @endforeach
                             </div>
                         </div>
                     @endif

@@ -98,7 +98,7 @@
                     </div>
 
                     <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]" x-ref="pileFace">
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-4 gap-3">
                         @foreach ($pileCard as $symbol)
                             <button
                                 type="button"
@@ -106,7 +106,7 @@
                                 wire:click="selectPileSymbol(@js($symbol))"
                                 @disabled($isAnimating)
                                 @class([
-                                    'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-4xl shadow-sm transition-all hover:border-[#1915014a] dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
+                                    'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
                                     'pointer-events-none opacity-70' => $isAnimating,
                                     'border-[#19140035] dark:border-[#3E3E3A]' => $selectedPileSymbol !== $symbol,
                                     'border-transparent ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedPileSymbol === $symbol,
@@ -141,11 +141,21 @@
                                 <div
                                     class="absolute inset-0 translate-x-2 translate-y-2 rounded-md bg-[#EDEBE3] p-4 shadow-sm dark:bg-[#0b0b0b]"
                                     aria-hidden="true"
-                                ></div>
+                                >
+                                    <div class="grid grid-cols-4 gap-3 opacity-80">
+                                        @foreach ($this->nextHandCard as $symbol)
+                                            <div
+                                                class="flex aspect-square items-center justify-center rounded-md border border-[#19140035] bg-[#FDFDFC] text-3xl shadow-sm sm:text-4xl dark:border-[#3E3E3A] dark:bg-[#0a0a0a]"
+                                            >
+                                                {{ $symbol }}
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
                             @endif
 
                             <div class="relative rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]" x-ref="handFace">
-                                <div class="grid grid-cols-2 gap-3">
+                                <div class="grid grid-cols-4 gap-3">
                                     @foreach ($handCard as $symbol)
                                         <button
                                             type="button"
@@ -153,7 +163,7 @@
                                             wire:click="selectHandSymbol(@js($symbol))"
                                             @disabled($isAnimating)
                                             @class([
-                                                'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-4xl shadow-sm transition-all hover:border-[#1915014a] dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
+                                                'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
                                                 'pointer-events-none opacity-70' => $isAnimating,
                                                 'border-[#19140035] dark:border-[#3E3E3A]' => $selectedHandSymbol !== $symbol,
                                                 'border-transparent ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedHandSymbol === $symbol,

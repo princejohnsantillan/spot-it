@@ -12,7 +12,11 @@ use App\Symbols\EmojiSymbol;
 final class EmojiDeck
 {
     public const EMOJIS = [
-        '😂', '😊', '🙏', '🔥', '😍', '🎉', '😭', '🥰', '👍🏼', '🤣', '💯', '💀', '🤔',
+        '😂', '😊', '🙏', '🔥', '😍', '🎉', '😭', '🥰', '👍', '🤣', '💯', '💀', '🤔',
+        '😎', '😁', '😅', '🙌', '✨', '🤩', '😜', '😇', '🥳', '😡', '😱', '🤯', '🤗',
+        '🤝', '👀', '💪', '🧠', '🐶', '🐱', '🦊', '🐻', '🐼', '🐸', '🐵', '🦄', '🐝',
+        '🐢', '🐙', '🦋', '🌈', '⭐', '🌙', '☀️', '⚡', '🍕', '🍔', '🍟', '🍣', '🍩',
+        '🍎', '⚽', '🏀', '🎮', '🎸',
     ];
 
     /**
@@ -37,6 +41,14 @@ final class EmojiDeck
      */
     public function generate(): array
     {
-        return (new DeckGenerator(3))->setSymbols(array_values($this->symbols))->generate();
+        $emojis = array_values(array_unique(self::EMOJIS));
+
+        if (count($emojis) !== count(self::EMOJIS)) {
+            throw new \LogicException('Emoji deck emojis must be unique.');
+        }
+
+        return (new DeckGenerator)
+            ->setSymbols(array_values($this->symbols))
+            ->generate();
     }
 }

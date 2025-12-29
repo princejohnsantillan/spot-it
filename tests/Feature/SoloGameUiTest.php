@@ -71,7 +71,7 @@ it('shows the game duration when the game is finished', function () {
             ->call('completeMatch')
             ->assertSet('isOver', true)
             ->assertSet('finishedAt', Carbon::now()->timestamp)
-            ->assertSee('Duration: 01:30');
+            ->assertSee('Duration: 1 minute 30 seconds');
     } finally {
         Carbon::setTestNow();
     }

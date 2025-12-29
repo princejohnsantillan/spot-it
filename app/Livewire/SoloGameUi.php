@@ -9,6 +9,7 @@ use App\Dealer;
 use App\Decks\EmojiDeck;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 final class SoloGameUi extends Component
@@ -107,9 +108,21 @@ final class SoloGameUi extends Component
 
         $seconds = max(0, $this->finishedAt - $this->startedAt);
 
-        return $seconds >= 3600
-            ? gmdate('H:i:s', $seconds)
-            : gmdate('i:s', $seconds);
+        return $this->formatDurationForHumans($seconds);
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getNextHandCardProperty(): array
+    {
+        $count = count($this->hand);
+
+        if ($count < 2) {
+            return [];
+        }
+
+        return $this->hand[$count - 2];
     }
 
     public function completeMatch(): void
@@ -217,6 +230,31 @@ final class SoloGameUi extends Component
     private function serializeCard(Card $card): array
     {
         return array_keys($card->getSymbols());
+    }
+
+    private function formatDurationForHumans(int $seconds): string
+    {
+        $seconds = max(0, $seconds);
+
+        $hours = intdiv($seconds, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+        $remainingSeconds = $seconds % 60;
+
+        $parts = [];
+
+        if ($hours > 0) {
+            $parts[] = $hours.' '.Str::plural('hour', $hours);
+        }
+
+        if ($minutes > 0) {
+            $parts[] = $minutes.' '.Str::plural('minute', $minutes);
+        }
+
+        if ($remainingSeconds > 0 || $parts === []) {
+            $parts[] = $remainingSeconds.' '.Str::plural('second', $remainingSeconds);
+        }
+
+        return implode(' ', $parts);
     }
 
     public function render(): View

@@ -39,8 +39,54 @@
             </div>
 
             <div
-                x-data="{ shake: false }"
+                x-data="{ shake: false, sliding: false }"
                 x-on:spotit-shake.window="shake = true; setTimeout(() => shake = false, 350)"
+                x-on:spotit-match.window="
+                    if (sliding) return;
+
+                    const hand = $refs.handFace;
+                    const pile = $refs.pileFace;
+
+                    if (!hand || !pile) return;
+
+                    sliding = true;
+                    $nextTick(() => {
+                        const handRect = hand.getBoundingClientRect();
+                        const pileRect = pile.getBoundingClientRect();
+
+                        const clone = hand.cloneNode(true);
+                        clone.style.position = 'fixed';
+                        clone.style.left = `${handRect.left}px`;
+                        clone.style.top = `${handRect.top}px`;
+                        clone.style.width = `${handRect.width}px`;
+                        clone.style.height = `${handRect.height}px`;
+                        clone.style.margin = '0';
+                        clone.style.zIndex = '50';
+                        clone.style.pointerEvents = 'none';
+                        document.body.appendChild(clone);
+
+                        hand.style.visibility = 'hidden';
+
+                        const deltaX = pileRect.left - handRect.left;
+                        const deltaY = pileRect.top - handRect.top;
+
+                        const animation = clone.animate(
+                            [
+                                { transform: 'translate(0px, 0px) scale(1)', opacity: 1 },
+                                { transform: `translate(${deltaX}px, ${deltaY}px) scale(0.98)`, opacity: 1 },
+                            ],
+                            { duration: 380, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' }
+                        );
+
+                        animation.finished
+                            .then(() => $wire.completeMatch())
+                            .finally(() => {
+                                clone.remove();
+                                hand.style.visibility = '';
+                                sliding = false;
+                            });
+                    });
+                "
                 class="grid gap-6 lg:grid-cols-2"
             >
                 <section
@@ -49,20 +95,19 @@
                 >
                     <div class="mb-4 flex items-center justify-between gap-4">
                         <h2 class="text-sm font-semibold tracking-wide text-[#706f6c] dark:text-[#A1A09A]">PILE</h2>
-                        <div class="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                            Selected:
-                            <span class="font-medium text-[#1b1b18] dark:text-[#EDEDEC]">{{ $selectedPileSymbol ?? '—' }}</span>
-                        </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]" x-ref="pileFace">
+                        <div class="grid grid-cols-2 gap-3">
                         @foreach ($pileCard as $symbol)
                             <button
                                 type="button"
                                 wire:key="pile-{{ $symbol }}"
                                 wire:click="selectPileSymbol(@js($symbol))"
+                                @disabled($isAnimating)
                                 @class([
                                     'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-4xl shadow-sm transition-all hover:border-[#1915014a] dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
+                                    'pointer-events-none opacity-70' => $isAnimating,
                                     'border-[#19140035] dark:border-[#3E3E3A]' => $selectedPileSymbol !== $symbol,
                                     'border-transparent ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedPileSymbol === $symbol,
                                 ])
@@ -70,6 +115,7 @@
                                 {{ $symbol }}
                             </button>
                         @endforeach
+                        </div>
                     </div>
                 </section>
 
@@ -79,36 +125,45 @@
                 >
                     <div class="mb-4 flex items-center justify-between gap-4">
                         <h2 class="text-sm font-semibold tracking-wide text-[#706f6c] dark:text-[#A1A09A]">YOUR HAND</h2>
-                        <div class="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                            Selected:
-                            <span class="font-medium text-[#1b1b18] dark:text-[#EDEDEC]">{{ $selectedHandSymbol ?? '—' }}</span>
-                        </div>
                     </div>
 
                     @if ($isOver)
                         <div class="rounded-md border border-[#19140035] bg-[#FDFDFC] p-6 text-center dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
                             <div class="text-lg font-semibold">Game over</div>
-                            @if ($duration)
-                                <div class="mt-1 text-sm text-[#706f6c] dark:text-[#A1A09A]">Duration: {{ $duration }}</div>
+                            @if ($this->duration)
+                                <div class="mt-1 text-sm text-[#706f6c] dark:text-[#A1A09A]">Duration: {{ $this->duration }}</div>
                             @endif
                             <div class="mt-1 text-sm text-[#706f6c] dark:text-[#A1A09A]">Hit “New Game” to play again.</div>
                         </div>
                     @else
-                        <div class="grid grid-cols-2 gap-3">
-                            @foreach ($handCard as $symbol)
-                                <button
-                                    type="button"
-                                    wire:key="hand-{{ $symbol }}"
-                                    wire:click="selectHandSymbol(@js($symbol))"
-                                    @class([
-                                        'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-4xl shadow-sm transition-all hover:border-[#1915014a] dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
-                                        'border-[#19140035] dark:border-[#3E3E3A]' => $selectedHandSymbol !== $symbol,
-                                        'border-transparent ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedHandSymbol === $symbol,
-                                    ])
-                                >
-                                    {{ $symbol }}
-                                </button>
-                            @endforeach
+                        <div class="relative">
+                            @if (count($hand) > 1)
+                                <div
+                                    class="absolute inset-0 translate-x-2 translate-y-2 rounded-md bg-[#EDEBE3] p-4 shadow-sm dark:bg-[#0b0b0b]"
+                                    aria-hidden="true"
+                                ></div>
+                            @endif
+
+                            <div class="relative rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]" x-ref="handFace">
+                                <div class="grid grid-cols-2 gap-3">
+                                    @foreach ($handCard as $symbol)
+                                        <button
+                                            type="button"
+                                            wire:key="hand-{{ $symbol }}"
+                                            wire:click="selectHandSymbol(@js($symbol))"
+                                            @disabled($isAnimating)
+                                            @class([
+                                                'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-4xl shadow-sm transition-all hover:border-[#1915014a] dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
+                                                'pointer-events-none opacity-70' => $isAnimating,
+                                                'border-[#19140035] dark:border-[#3E3E3A]' => $selectedHandSymbol !== $symbol,
+                                                'border-transparent ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedHandSymbol === $symbol,
+                                            ])
+                                        >
+                                            {{ $symbol }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
                     @endif
                 </section>

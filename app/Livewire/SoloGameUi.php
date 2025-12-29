@@ -42,6 +42,10 @@ final class SoloGameUi extends Component
 
     public ?int $finishedAt = null;
 
+    public bool $isAnimating = false;
+
+    public ?string $pendingMatchSymbol = null;
+
     public function mount(): void
     {
         $this->resetGame();
@@ -53,6 +57,8 @@ final class SoloGameUi extends Component
         $this->startedAt = Carbon::now()->timestamp;
         $this->finishedAt = null;
         $this->isOver = false;
+        $this->isAnimating = false;
+        $this->pendingMatchSymbol = null;
 
         $deck = (new EmojiDeck)->generate();
 
@@ -73,7 +79,7 @@ final class SoloGameUi extends Component
 
     public function selectPileSymbol(string $symbol): void
     {
-        if (! $this->hasStarted) {
+        if (! $this->hasStarted || $this->isAnimating) {
             return;
         }
 
@@ -84,7 +90,7 @@ final class SoloGameUi extends Component
 
     public function selectHandSymbol(string $symbol): void
     {
-        if (! $this->hasStarted) {
+        if (! $this->hasStarted || $this->isAnimating) {
             return;
         }
 
@@ -106,6 +112,22 @@ final class SoloGameUi extends Component
             : gmdate('i:s', $seconds);
     }
 
+    public function completeMatch(): void
+    {
+        if (! $this->hasStarted || ! $this->isAnimating || $this->pendingMatchSymbol === null) {
+            return;
+        }
+
+        $symbol = $this->pendingMatchSymbol;
+
+        try {
+            $this->handleMatch($symbol);
+        } finally {
+            $this->isAnimating = false;
+            $this->pendingMatchSymbol = null;
+        }
+    }
+
     private function resolveSelection(): void
     {
         if ($this->selectedPileSymbol === null || $this->selectedHandSymbol === null) {
@@ -119,7 +141,13 @@ final class SoloGameUi extends Component
             return;
         }
 
-        $this->handleMatch($this->selectedPileSymbol);
+        if ($this->isAnimating) {
+            return;
+        }
+
+        $this->isAnimating = true;
+        $this->pendingMatchSymbol = $this->selectedPileSymbol;
+        $this->dispatch('spotit-match');
     }
 
     private function handleMatch(string $symbol): void
@@ -177,6 +205,8 @@ final class SoloGameUi extends Component
         $this->hasStarted = false;
         $this->startedAt = null;
         $this->finishedAt = null;
+        $this->isAnimating = false;
+        $this->pendingMatchSymbol = null;
 
         $this->resetSelections();
     }

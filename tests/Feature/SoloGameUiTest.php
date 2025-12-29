@@ -20,19 +20,28 @@ it('shakes and deselects when the selected symbols do not match', function () {
 it('advances the game when the selected symbols match', function () {
     $nextCard = ['😊', '🙏', '🔥', '🥰'];
     $currentCard = ['😂', '🎉', '😭', '👍🏼'];
+    $pileCard = ['😂', '😊', '🙏', '🔥'];
 
     Livewire::test(SoloGameUi::class)
         ->set('hasStarted', true)
-        ->set('pileCard', ['😂', '😊', '🙏', '🔥'])
+        ->set('pileCard', $pileCard)
         ->set('hand', [$nextCard, $currentCard])
         ->set('handCard', $currentCard)
         ->set('pileCount', 1)
         ->call('selectPileSymbol', '😂')
         ->call('selectHandSymbol', '😂')
+        ->assertSet('isAnimating', true)
+        ->assertSet('pendingMatchSymbol', '😂')
+        ->assertDispatched('spotit-match')
+        ->assertSet('pileCard', $pileCard)
+        ->assertSet('handCard', $currentCard)
+        ->call('completeMatch')
         ->assertSet('pileCard', $currentCard)
         ->assertSet('handCard', $nextCard)
         ->assertSet('pileCount', 2)
         ->assertCount('hand', 1)
+        ->assertSet('isAnimating', false)
+        ->assertSet('pendingMatchSymbol', null)
         ->assertSet('selectedPileSymbol', null)
         ->assertSet('selectedHandSymbol', null);
 });
@@ -59,6 +68,7 @@ it('shows the game duration when the game is finished', function () {
             ->set('pileCount', 1)
             ->call('selectPileSymbol', '😂')
             ->call('selectHandSymbol', '😂')
+            ->call('completeMatch')
             ->assertSet('isOver', true)
             ->assertSet('finishedAt', Carbon::now()->timestamp)
             ->assertSee('Duration: 01:30');

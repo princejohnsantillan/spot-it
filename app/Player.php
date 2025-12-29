@@ -49,9 +49,7 @@ final class Player
 
     public function peak(): Card
     {
-        $hand = $this->hand;
-
-        return array_pop($hand);
+        return end($this->hand);
     }
 
     public function top(): Card
@@ -60,8 +58,10 @@ final class Player
     }
 
 
-    public function spotIt(Card $card, Symbol $symbol): bool
+    public function spotIt(Card $card, Symbol|string $symbol): bool
     {
-        return $this->peak()->spotItSymbol($card)->getId() === $symbol->getId();
+        $symbol = is_string($symbol) ? $symbol : $symbol->getId();
+
+        return $this->peak()->spotItSymbol($card)->getId() === $symbol;
     }
 }

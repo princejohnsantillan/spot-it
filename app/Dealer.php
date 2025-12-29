@@ -59,9 +59,7 @@ final class Dealer
 
     public function peak(): Card
     {
-        $deck = $this->deck;
-
-        return array_pop($deck);
+        return end($this->deck);
     }
 
     public function top(): Card

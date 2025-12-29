@@ -34,7 +34,7 @@
                     <span class="font-medium">Pile:</span> {{ $pileCount }}
                 </div>
                 <div class="rounded-sm border border-[#19140035] bg-white px-3 py-1.5 dark:border-[#3E3E3A] dark:bg-[#161615]">
-                    <span class="font-medium">Cards left:</span> {{ count($hand) }}
+                    <span class="font-medium">Cards left:</span> {{ $handRemaining }}
                 </div>
             </div>
 
@@ -63,12 +63,11 @@
                     </div>
 
                     <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]">
-                        @php($pileRotations = $this->rotationsForCard('pile', $pileCard))
                         <div class="grid grid-cols-4 gap-3">
                         @foreach ($pileCard as $symbol)
                             <button
                                 type="button"
-                                wire:key="pile-{{ $symbol }}"
+                                wire:key="pile-{{ md5($symbol) }}"
                                 wire:click="selectPileSymbol(@js($symbol))"
                                 @disabled($isAnimating)
                                 @class([
@@ -106,12 +105,11 @@
                         </div>
                     @else
                         <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]">
-                            @php($handRotations = $this->rotationsForCard('hand', $handCard))
                             <div class="grid grid-cols-4 gap-3">
                                 @foreach ($handCard as $symbol)
                                     <button
                                         type="button"
-                                        wire:key="hand-{{ $symbol }}"
+                                        wire:key="hand-{{ md5($symbol) }}"
                                         wire:click="selectHandSymbol(@js($symbol))"
                                         @disabled($isAnimating)
                                         @class([

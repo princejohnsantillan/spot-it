@@ -10,6 +10,7 @@ use App\Decks\EmojiDeck;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 final class SoloGameUi extends Component
@@ -20,16 +21,23 @@ final class SoloGameUi extends Component
     public array $pileCard = [];
 
     /**
-     * @var array<int, array<int, string>>
+     * @var string[]
      */
-    public array $hand = [];
+    public array $handRotations = [];
 
     /**
      * @var string[]
      */
     public array $handCard = [];
 
+    /**
+     * @var string[]
+     */
+    public array $pileRotations = [];
+
     public int $pileCount = 0;
+
+    public int $handRemaining = 0;
 
     public bool $isOver = false;
 
@@ -49,13 +57,19 @@ final class SoloGameUi extends Component
 
     public int $rotationSeed = 0;
 
+    #[Locked]
+    public string $gameKey = '';
+
     public function mount(): void
     {
+        $this->ensureGameKey();
         $this->resetGame();
     }
 
     public function startNewGame(): void
     {
+        $this->ensureGameKey();
+
         $this->hasStarted = true;
         $this->startedAt = Carbon::now()->timestamp;
         $this->finishedAt = null;
@@ -74,10 +88,11 @@ final class SoloGameUi extends Component
         $dealer->deal($hand);
 
         $this->pileCard = $this->serializeCard($pile);
-        $this->hand = array_map(fn (Card $card): array => $this->serializeCard($card), $hand);
+        $this->putHandStack(array_map(fn (Card $card): array => $this->serializeCard($card), $hand));
         $this->pileCount = 1;
 
         $this->syncHandCard();
+        $this->syncRotations();
         $this->resetSelections();
     }
 
@@ -168,10 +183,13 @@ final class SoloGameUi extends Component
             return;
         }
 
-        $matchedCard = array_pop($this->hand);
+        $hand = $this->getHandStack();
+        $matchedCard = array_pop($hand);
+        $this->putHandStack($hand);
 
         if ($matchedCard === null) {
             $this->syncHandCard();
+            $this->syncRotations();
             $this->resetSelections();
 
             return;
@@ -181,13 +199,17 @@ final class SoloGameUi extends Component
         $this->pileCount++;
 
         $this->syncHandCard();
+        $this->syncRotations();
         $this->resetSelections();
     }
 
     private function syncHandCard(): void
     {
-        $this->handCard = $this->hand !== [] ? end($this->hand) : [];
-        $this->isOver = $this->hand === [];
+        $hand = $this->getHandStack();
+
+        $this->handCard = $hand !== [] ? end($hand) : [];
+        $this->handRemaining = count($hand);
+        $this->isOver = $hand === [];
 
         if ($this->hasStarted && $this->isOver && $this->finishedAt === null) {
             $this->finishedAt = Carbon::now()->timestamp;
@@ -203,8 +225,11 @@ final class SoloGameUi extends Component
     private function resetGame(): void
     {
         $this->pileCard = [];
-        $this->hand = [];
+        $this->clearGameSession();
         $this->handCard = [];
+        $this->handRemaining = 0;
+        $this->handRotations = [];
+        $this->pileRotations = [];
         $this->pileCount = 0;
         $this->isOver = false;
         $this->hasStarted = false;
@@ -215,6 +240,54 @@ final class SoloGameUi extends Component
         $this->rotationSeed = 0;
 
         $this->resetSelections();
+    }
+
+    private function ensureGameKey(): void
+    {
+        if ($this->gameKey !== '') {
+            return;
+        }
+
+        $this->gameKey = (string) Str::uuid();
+    }
+
+    private function gameSessionKey(string $suffix): string
+    {
+        return "spotit.solo.{$this->gameKey}.{$suffix}";
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    private function getHandStack(): array
+    {
+        /** @var array<int, array<int, string>> $hand */
+        $hand = session()->get($this->gameSessionKey('hand'), []);
+
+        return $hand;
+    }
+
+    /**
+     * @param  array<int, array<int, string>>  $hand
+     */
+    private function putHandStack(array $hand): void
+    {
+        session()->put($this->gameSessionKey('hand'), $hand);
+    }
+
+    private function clearGameSession(): void
+    {
+        if ($this->gameKey === '') {
+            return;
+        }
+
+        session()->forget("spotit.solo.{$this->gameKey}");
+    }
+
+    private function syncRotations(): void
+    {
+        $this->pileRotations = $this->pileCard !== [] ? $this->rotationsForCard('pile', $this->pileCard) : [];
+        $this->handRotations = $this->handCard !== [] ? $this->rotationsForCard('hand', $this->handCard) : [];
     }
 
     /**

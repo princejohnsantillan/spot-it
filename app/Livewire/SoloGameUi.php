@@ -256,7 +256,6 @@ final class SoloGameUi extends Component
      */
     public function rotationsForCard(string $scope, array $card): array
     {
-        $degrees = [-28, -20, -12, -4, 4, 12, 20, 28];
         $seed = $this->rotationSeed.'|'.$scope.'|'.implode('|', $card);
 
         $symbols = array_values($card);
@@ -266,9 +265,27 @@ final class SoloGameUi extends Component
         });
 
         $rotations = [];
+        $used = [];
 
-        foreach ($symbols as $index => $symbol) {
-            $rotations[$symbol] = $degrees[$index % count($degrees)];
+        foreach ($symbols as $symbol) {
+            $hash = crc32($seed.'|rotation|'.$symbol);
+
+            if ($hash < 0) {
+                $hash += 4294967296;
+            }
+
+            $rotation = $hash % 361;
+
+            for ($attempts = 0; $attempts < 361; $attempts++) {
+                if (! isset($used[$rotation])) {
+                    break;
+                }
+
+                $rotation = ($rotation + 1) % 361;
+            }
+
+            $used[$rotation] = true;
+            $rotations[$symbol] = $rotation;
         }
 
         return $rotations;

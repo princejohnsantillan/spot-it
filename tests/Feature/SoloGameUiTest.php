@@ -88,6 +88,8 @@ it('assigns stable, unique rotations for each symbol on a card', function () {
     expect($first)->toBe($second);
     expect(array_values($first))->toHaveCount(8);
     expect(array_unique(array_values($first)))->toHaveCount(8);
+    expect(min(array_values($first)))->toBeGreaterThanOrEqual(0);
+    expect(max(array_values($first)))->toBeLessThanOrEqual(360);
 
     $component->set('rotationSeed', 456);
     $third = $component->instance()->rotationsForCard('pile', $card);

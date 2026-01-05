@@ -122,11 +122,15 @@
 /* Touch drag floating element */
 .spotit-touch-drag {
     position: fixed;
+    top: 0;
+    left: 0;
     z-index: 9999;
     pointer-events: none;
     opacity: 0.5;
-    transform: scale(1.05);
     border-radius: 0.375rem;
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 /* Prevent text selection during drag */

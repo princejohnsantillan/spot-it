@@ -6,6 +6,7 @@
         dragging: null,
         dragSource: null,
         touchDragEl: null,
+        touchOffset: { x: 0, y: 0 },
 
         // Mouse drag events
         handleDragStart(symbol, source) {
@@ -44,12 +45,19 @@
             // Create floating drag element immediately
             const target = e.target.closest('[data-symbol]');
             const rect = target.getBoundingClientRect();
+
+            // Store offset for transform-based positioning
+            this.touchOffset = {
+                x: rect.width / 2,
+                y: rect.height / 2
+            };
+
             this.touchDragEl = target.cloneNode(true);
             this.touchDragEl.classList.add('spotit-touch-drag');
             this.touchDragEl.style.width = rect.width + 'px';
             this.touchDragEl.style.height = rect.height + 'px';
-            this.touchDragEl.style.left = rect.left + 'px';
-            this.touchDragEl.style.top = rect.top + 'px';
+            // Use transform for GPU-accelerated positioning
+            this.touchDragEl.style.transform = `translate3d(${touch.clientX - this.touchOffset.x}px, ${touch.clientY - this.touchOffset.y}px, 0) scale(1.05)`;
             document.body.appendChild(this.touchDragEl);
 
             target.classList.add('opacity-50', 'scale-95');
@@ -60,10 +68,8 @@
             e.preventDefault();
             const touch = e.touches[0];
 
-            // Move the floating element
-            const rect = this.touchDragEl.getBoundingClientRect();
-            this.touchDragEl.style.left = touch.clientX - rect.width / 2 + 'px';
-            this.touchDragEl.style.top = touch.clientY - rect.height / 2 + 'px';
+            // Use transform for smooth GPU-accelerated movement
+            this.touchDragEl.style.transform = `translate3d(${touch.clientX - this.touchOffset.x}px, ${touch.clientY - this.touchOffset.y}px, 0) scale(1.05)`;
         },
         handleTouchEnd(e) {
             if (!this.dragging) return;

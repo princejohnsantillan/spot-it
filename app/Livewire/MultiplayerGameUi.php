@@ -286,12 +286,22 @@ final class MultiplayerGameUi extends Component
     #[On('echo:game.{roomCode},.player.joined')]
     public function onPlayerJoined(array $data): void
     {
+        // Ignore own join event (we're redirecting anyway)
+        if (($data['player']['id'] ?? null) === $this->playerId) {
+            return;
+        }
+
         $this->players = $data['allPlayers'];
     }
 
     #[On('echo:game.{roomCode},.player.left')]
     public function onPlayerLeft(array $data): void
     {
+        // Ignore own leave event (we're redirecting anyway)
+        if (($data['playerId'] ?? null) === $this->playerId) {
+            return;
+        }
+
         $this->players = $data['allPlayers'];
     }
 

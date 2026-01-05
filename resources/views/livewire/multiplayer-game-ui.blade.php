@@ -118,75 +118,42 @@
 
             <div class="grid gap-6 lg:grid-cols-2">
                 {{-- Pile Card --}}
-                <section
-                    class="relative rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
-                    x-bind:class="{ 'spotit-shake': shake }"
-                >
-                    <div class="mb-4 flex items-center justify-between gap-4">
-                        <h2 class="text-sm font-semibold tracking-wide text-[#706f6c] dark:text-[#A1A09A]">PILE</h2>
-                    </div>
-
-                    <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]">
-                        <div class="grid grid-cols-4 gap-3">
-                            @foreach ($pileCard as $symbol)
-                                <button
-                                    type="button"
-                                    wire:key="pile-{{ md5($symbol) }}"
-                                    wire:click="selectPileSymbol(@js($symbol))"
-                                    @disabled($handCard === [])
-                                    @class([
-                                        'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
-                                        'pointer-events-none opacity-70' => $handCard === [],
-                                        'border-[#19140035] dark:border-[#3E3E3A]' => $selectedPileSymbol !== $symbol,
-                                        'border-transparent ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedPileSymbol === $symbol,
-                                    ])
-                                >
-                                    <span class="inline-block" style="transform: rotate({{ $pileRotations[$symbol] ?? 0 }}deg)">
-                                        {{ $symbol }}
-                                    </span>
-                                </button>
-                            @endforeach
-                        </div>
-                    </div>
-                </section>
+                <x-spot-it-card
+                    label="PILE"
+                    :symbols="$pileCard"
+                    :rotations="$pileRotations"
+                    :selected-symbol="$selectedPileSymbol"
+                    :disabled="$handCard === []"
+                    ring-color="sky"
+                    shake="shake"
+                    wire-click-method="selectPileSymbol"
+                />
 
                 {{-- Hand Card (Shared) --}}
-                <section
-                    class="relative rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
-                    x-bind:class="{ 'spotit-shake': shake }"
-                >
-                    <div class="mb-4 flex items-center justify-between gap-4">
-                        <h2 class="text-sm font-semibold tracking-wide text-[#706f6c] dark:text-[#A1A09A]">HAND</h2>
-                    </div>
+                @if ($handCard === [])
+                    <section
+                        class="relative rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
+                    >
+                        <div class="mb-4 flex items-center justify-between gap-4">
+                            <h2 class="text-sm font-semibold tracking-wide text-[#706f6c] dark:text-[#A1A09A]">HAND</h2>
+                        </div>
 
-                    @if ($handCard === [])
                         <div class="rounded-md border border-emerald-300 bg-emerald-50 p-6 text-center dark:border-emerald-800 dark:bg-emerald-950">
                             <div class="text-lg font-semibold text-emerald-700 dark:text-emerald-300">No more cards!</div>
                             <div class="mt-1 text-sm text-emerald-600 dark:text-emerald-400">Game ending...</div>
                         </div>
-                    @else
-                        <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]">
-                            <div class="grid grid-cols-4 gap-3">
-                                @foreach ($handCard as $symbol)
-                                    <button
-                                        type="button"
-                                        wire:key="hand-{{ md5($symbol) }}"
-                                        wire:click="selectHandSymbol(@js($symbol))"
-                                        @class([
-                                            'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
-                                            'border-[#19140035] dark:border-[#3E3E3A]' => $selectedHandSymbol !== $symbol,
-                                            'border-transparent ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedHandSymbol === $symbol,
-                                        ])
-                                    >
-                                        <span class="inline-block" style="transform: rotate({{ $handRotations[$symbol] ?? 0 }}deg)">
-                                            {{ $symbol }}
-                                        </span>
-                                    </button>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-                </section>
+                    </section>
+                @else
+                    <x-spot-it-card
+                        label="HAND"
+                        :symbols="$handCard"
+                        :rotations="$handRotations"
+                        :selected-symbol="$selectedHandSymbol"
+                        ring-color="emerald"
+                        shake="shake"
+                        wire-click-method="selectHandSymbol"
+                    />
+                @endif
             </div>
 
             {{-- Match History Log --}}

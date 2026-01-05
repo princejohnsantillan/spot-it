@@ -57,14 +57,14 @@
             <div class="flex flex-col gap-3 rounded-lg border border-[#19140035] bg-white p-5 shadow-sm dark:border-[#3E3E3A] dark:bg-[#161615]">
                 <h2 class="font-semibold">Join a Room</h2>
                 <p class="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                    Enter a 6-letter room code to join an existing game.
+                    Enter a 6-character room code to join an existing game.
                 </p>
                 <div class="flex flex-col gap-3">
                     <input
                         type="text"
                         wire:model="roomCode"
                         maxlength="6"
-                        placeholder="ABCDEF"
+                        placeholder="ABC123"
                         class="w-full rounded-md border border-[#19140035] bg-[#FDFDFC] px-4 py-3 text-center text-lg font-mono uppercase tracking-widest shadow-sm placeholder:text-[#706f6c] focus:border-[#1915014a] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-[#3E3E3A] dark:bg-[#0a0a0a] dark:placeholder:text-[#A1A09A] dark:focus:border-[#62605b]"
                     />
                     @error('roomCode')

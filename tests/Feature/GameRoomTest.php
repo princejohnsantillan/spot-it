@@ -9,11 +9,11 @@ beforeEach(function (): void {
     cache()->flush();
 });
 
-it('generates a unique 6-character code', function (): void {
+it('generates a unique 6-character alphanumeric code', function (): void {
     $room = GameRoom::create('host-123', 'HostPlayer');
 
     expect($room->code)->toHaveLength(6);
-    expect($room->code)->toMatch('/^[A-Z]{6}$/');
+    expect($room->code)->toMatch('/^[A-Z0-9]{6}$/');
 });
 
 it('creates a room with host as first player', function (): void {

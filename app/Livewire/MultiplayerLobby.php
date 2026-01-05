@@ -16,7 +16,7 @@ final class MultiplayerLobby extends Component
     #[Validate('required|string|min:2|max:20')]
     public string $nickname = '';
 
-    #[Validate('required|string|size:6|alpha')]
+    #[Validate('required|string|size:6|alpha_num')]
     public string $roomCode = '';
 
     public string $error = '';

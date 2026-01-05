@@ -10,21 +10,20 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-final class GameStarted implements ShouldBroadcastNow
+final class PlayerJoinedTable implements ShouldBroadcastNow
 {
     use Dispatchable;
     use InteractsWithSockets;
     use SerializesModels;
 
     /**
-     * @param  array<int, string>  $pileCard
-     * @param  array<int, array<string, mixed>>  $players
+     * @param  array<string, mixed>  $player
+     * @param  array<int, array<string, mixed>>  $allPlayers
      */
     public function __construct(
         public string $tableCode,
-        public array $pileCard,
-        public array $players,
-        public int $rotationSeed,
+        public array $player,
+        public array $allPlayers,
     ) {}
 
     /**
@@ -39,6 +38,6 @@ final class GameStarted implements ShouldBroadcastNow
 
     public function broadcastAs(): string
     {
-        return 'game.started';
+        return 'player.joined';
     }
 }

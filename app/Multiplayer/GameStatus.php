@@ -7,6 +7,7 @@ namespace App\Multiplayer;
 enum GameStatus: string
 {
     case Waiting = 'waiting';
+    case Countdown = 'countdown';
     case Playing = 'playing';
     case Finished = 'finished';
 }

@@ -20,7 +20,7 @@ final class GameEnded implements ShouldBroadcastNow
      * @param  array<string, int>  $scoreboard
      */
     public function __construct(
-        public string $roomCode,
+        public string $tableCode,
         public string $winnerId,
         public string $winnerName,
         public array $scoreboard,
@@ -32,7 +32,7 @@ final class GameEnded implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new Channel('game.'.$this->roomCode),
+            new Channel('game.'.$this->tableCode),
         ];
     }
 

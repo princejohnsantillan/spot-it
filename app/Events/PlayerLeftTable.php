@@ -10,7 +10,7 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-final class PlayerLeftRoom implements ShouldBroadcastNow
+final class PlayerLeftTable implements ShouldBroadcastNow
 {
     use Dispatchable;
     use InteractsWithSockets;
@@ -20,7 +20,7 @@ final class PlayerLeftRoom implements ShouldBroadcastNow
      * @param  array<int, array<string, mixed>>  $allPlayers
      */
     public function __construct(
-        public string $roomCode,
+        public string $tableCode,
         public string $playerId,
         public string $playerName,
         public array $allPlayers,
@@ -32,7 +32,7 @@ final class PlayerLeftRoom implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new Channel('game.'.$this->roomCode),
+            new Channel('game.'.$this->tableCode),
         ];
     }
 

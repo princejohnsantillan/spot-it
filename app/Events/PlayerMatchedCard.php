@@ -22,7 +22,7 @@ final class PlayerMatchedCard implements ShouldBroadcastNow
      * @param  array<int, array<string, mixed>>  $players
      */
     public function __construct(
-        public string $roomCode,
+        public string $tableCode,
         public string $playerId,
         public string $playerName,
         public string $matchedSymbol,
@@ -38,7 +38,7 @@ final class PlayerMatchedCard implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new Channel('game.'.$this->roomCode),
+            new Channel('game.'.$this->tableCode),
         ];
     }
 

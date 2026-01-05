@@ -6,17 +6,10 @@
     'matchingSymbol' => null,
     'isAnimating' => false,
     'disabled' => false,
-    'ringColor' => 'sky',
+    'cardType' => 'pile',
     'shake' => false,
     'wireClickMethod',
 ])
-
-@php
-    $ringColorClasses = match ($ringColor) {
-        'emerald' => 'ring-emerald-500',
-        default => 'ring-sky-500',
-    };
-@endphp
 
 <section
     class="rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
@@ -32,18 +25,18 @@
                 @php
                     $isSelected = $selectedSymbol === $symbol;
                     $isMatchingAndAnimating = $isAnimating && $matchingSymbol === $symbol;
-                    $matchClass = $ringColor === 'emerald' ? 'spotit-match spotit-match-hand' : 'spotit-match spotit-match-pile';
+                    $matchClass = $cardType === 'hand' ? 'spotit-match spotit-match-hand' : 'spotit-match spotit-match-pile';
                 @endphp
                 <button
                     type="button"
-                    wire:key="{{ $ringColor }}-{{ md5($symbol) }}"
+                    wire:key="{{ $cardType }}-{{ md5($symbol) }}"
                     wire:click="{{ $wireClickMethod }}(@js($symbol))"
                     @disabled($disabled)
                     @class([
-                        'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
+                        'flex aspect-square items-center justify-center rounded-md border border-[#19140035] text-3xl shadow-sm outline-none sm:text-4xl dark:border-[#3E3E3A]',
                         'pointer-events-none opacity-70' => $disabled,
-                        'border-[#19140035] dark:border-[#3E3E3A]' => ! $isMatchingAndAnimating && ! $isSelected,
-                        'border-transparent ring-4 ring-offset-2 ring-offset-white dark:ring-offset-[#161615] ' . $ringColorClasses => ! $isMatchingAndAnimating && $isSelected,
+                        'bg-[#FDFDFC] dark:bg-[#0a0a0a]' => ! $isSelected,
+                        'bg-[#e5e5e0] dark:bg-[#1f1f1e]' => $isSelected && ! $isMatchingAndAnimating,
                         $matchClass => $isMatchingAndAnimating,
                     ])
                 >

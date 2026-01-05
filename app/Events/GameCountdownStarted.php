@@ -10,20 +10,19 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-final class PlayerJoinedRoom implements ShouldBroadcastNow
+final class GameCountdownStarted implements ShouldBroadcastNow
 {
     use Dispatchable;
     use InteractsWithSockets;
     use SerializesModels;
 
     /**
-     * @param  array<string, mixed>  $player
-     * @param  array<int, array<string, mixed>>  $allPlayers
+     * @param  array<int, array<string, mixed>>  $players
      */
     public function __construct(
-        public string $roomCode,
-        public array $player,
-        public array $allPlayers,
+        public string $tableCode,
+        public array $players,
+        public int $rotationSeed,
     ) {}
 
     /**
@@ -32,12 +31,12 @@ final class PlayerJoinedRoom implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new Channel('game.'.$this->roomCode),
+            new Channel('game.'.$this->tableCode),
         ];
     }
 
     public function broadcastAs(): string
     {
-        return 'player.joined';
+        return 'game.countdown.started';
     }
 }

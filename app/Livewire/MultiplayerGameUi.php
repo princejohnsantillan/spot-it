@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Events\GameCountdownStarted;
 use App\Events\GameEnded;
 use App\Events\GameStarted;
-use App\Events\PlayerLeftRoom;
+use App\Events\PlayerLeftTable;
 use App\Events\PlayerMatchedCard;
-use App\Multiplayer\GameRoom;
+use App\Multiplayer\GameTable;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
@@ -17,7 +18,7 @@ use Livewire\Component;
 final class MultiplayerGameUi extends Component
 {
     #[Locked]
-    public string $roomCode = '';
+    public string $tableCode = '';
 
     #[Locked]
     public string $playerId = '';
@@ -81,9 +82,11 @@ final class MultiplayerGameUi extends Component
      */
     public array $scoreboard = [];
 
+    public int $countdown = 0;
+
     public function mount(string $code): void
     {
-        $this->roomCode = strtoupper($code);
+        $this->tableCode = strtoupper($code);
         $this->playerId = session('guest_player_id', '');
         $this->playerName = session('guest_player_name', '');
 
@@ -93,40 +96,40 @@ final class MultiplayerGameUi extends Component
             return;
         }
 
-        $room = GameRoom::find($this->roomCode);
+        $table = GameTable::find($this->tableCode);
 
-        if ($room === null) {
+        if ($table === null) {
             $this->redirect(route('multiplayer.lobby'), navigate: true);
 
             return;
         }
 
-        $this->syncFromRoom($room);
+        $this->syncFromTable($table);
     }
 
     public function startGame(): void
     {
-        $room = GameRoom::find($this->roomCode);
+        $table = GameTable::find($this->tableCode);
 
-        if ($room === null || ! $room->isHost($this->playerId)) {
+        if ($table === null || ! $table->isHost($this->playerId)) {
             return;
         }
 
-        if (! $room->start()) {
+        if (! $table->startCountdown()) {
             return;
         }
 
-        $room->save();
+        $table->save();
 
-        // Broadcast game started
-        broadcast(new GameStarted(
-            roomCode: $room->code,
-            pileCard: $room->pileCard,
-            players: array_map(fn ($p) => $p->toArray(), $room->players),
-            rotationSeed: $room->rotationSeed,
+        // Broadcast countdown started
+        broadcast(new GameCountdownStarted(
+            tableCode: $table->code,
+            players: array_map(fn ($p) => $p->toArray(), $table->players),
+            rotationSeed: $table->rotationSeed,
         ));
 
-        $this->syncFromRoom($room);
+        $this->syncFromTable($table);
+        $this->countdown = 5;
     }
 
     public function selectPileSymbol(string $symbol): void
@@ -170,13 +173,13 @@ final class MultiplayerGameUi extends Component
 
     private function processMatch(string $symbol): void
     {
-        $room = GameRoom::find($this->roomCode);
+        $table = GameTable::find($this->tableCode);
 
-        if ($room === null) {
+        if ($table === null) {
             return;
         }
 
-        $result = $room->attemptMatch($this->playerId, $symbol, $symbol);
+        $result = $table->attemptMatch($this->playerId, $symbol, $symbol);
 
         if (! $result['success']) {
             // Match failed (someone else got it first) - shake
@@ -185,13 +188,13 @@ final class MultiplayerGameUi extends Component
             return;
         }
 
-        $room->save();
+        $table->save();
 
         // Update cards immediately
         $this->pileCard = $result['newPileCard'];
         $this->handCard = $result['newHandCard'] ?? [];
-        $this->players = array_map(fn ($p) => $p->toArray(), $room->players);
-        $this->cardsRemaining = $room->remainingCards();
+        $this->players = array_map(fn ($p) => $p->toArray(), $table->players);
+        $this->cardsRemaining = $table->remainingCards();
         $this->syncRotations();
 
         // Add to match history and trigger score pulse
@@ -201,23 +204,23 @@ final class MultiplayerGameUi extends Component
 
         // Broadcast the match to all players
         broadcast(new PlayerMatchedCard(
-            roomCode: $room->code,
+            tableCode: $table->code,
             playerId: $this->playerId,
             playerName: $this->playerName,
             matchedSymbol: $symbol,
             newPileCard: $result['newPileCard'],
             newHandCard: $result['newHandCard'] ?? [],
-            players: array_map(fn ($p) => $p->toArray(), $room->players),
-            cardsRemaining: $room->remainingCards(),
+            players: array_map(fn ($p) => $p->toArray(), $table->players),
+            cardsRemaining: $table->remainingCards(),
         ));
 
         if ($result['isGameOver']) {
-            $winner = $room->getWinner();
+            $winner = $table->getWinner();
             broadcast(new GameEnded(
-                roomCode: $room->code,
+                tableCode: $table->code,
                 winnerId: $result['winnerId'],
                 winnerName: $winner?->name ?? 'Unknown',
-                scoreboard: $room->getScoreboard(),
+                scoreboard: $table->getScoreboard(),
             ));
         }
     }
@@ -242,7 +245,7 @@ final class MultiplayerGameUi extends Component
         $this->selectedHandSymbol = null;
     }
 
-    #[On('echo:game.{roomCode},.player.joined')]
+    #[On('echo:game.{tableCode},.player.joined')]
     public function onPlayerJoined(array $data): void
     {
         // Ignore own join event (we're redirecting anyway)
@@ -253,7 +256,7 @@ final class MultiplayerGameUi extends Component
         $this->players = $data['allPlayers'];
     }
 
-    #[On('echo:game.{roomCode},.player.left')]
+    #[On('echo:game.{tableCode},.player.left')]
     public function onPlayerLeft(array $data): void
     {
         // Ignore own leave event (we're redirecting anyway)
@@ -264,16 +267,16 @@ final class MultiplayerGameUi extends Component
         $this->players = $data['allPlayers'];
     }
 
-    #[On('echo:game.{roomCode},.game.started')]
+    #[On('echo:game.{tableCode},.game.started')]
     public function onGameStarted(array $data): void
     {
-        $room = GameRoom::find($this->roomCode);
-        if ($room !== null) {
-            $this->syncFromRoom($room);
+        $table = GameTable::find($this->tableCode);
+        if ($table !== null) {
+            $this->syncFromTable($table);
         }
     }
 
-    #[On('echo:game.{roomCode},.card.matched')]
+    #[On('echo:game.{tableCode},.card.matched')]
     public function onCardMatched(array $data): void
     {
         // Ignore if this is our own match (we already updated from processMatch)
@@ -296,7 +299,7 @@ final class MultiplayerGameUi extends Component
         $this->resetSelections();
     }
 
-    #[On('echo:game.{roomCode},.game.ended')]
+    #[On('echo:game.{tableCode},.game.ended')]
     public function onGameEnded(array $data): void
     {
         $this->status = 'finished';
@@ -305,21 +308,56 @@ final class MultiplayerGameUi extends Component
         $this->scoreboard = $data['scoreboard'];
     }
 
-    public function leaveRoom(): void
+    #[On('echo:game.{tableCode},.game.countdown.started')]
+    public function onCountdownStarted(array $data): void
     {
-        $room = GameRoom::find($this->roomCode);
+        $table = GameTable::find($this->tableCode);
+        if ($table !== null) {
+            $this->syncFromTable($table);
+            $this->countdown = 5;
+        }
+    }
 
-        if ($room !== null) {
-            $room->removePlayer($this->playerId);
+    public function startGameAfterCountdown(): void
+    {
+        $table = GameTable::find($this->tableCode);
 
-            if ($room->players !== []) {
-                $room->save();
+        if ($table === null || ! $table->isHost($this->playerId)) {
+            return;
+        }
 
-                broadcast(new PlayerLeftRoom(
-                    roomCode: $room->code,
+        if (! $table->start()) {
+            return;
+        }
+
+        $table->save();
+
+        // Broadcast game started
+        broadcast(new GameStarted(
+            tableCode: $table->code,
+            pileCard: $table->pileCard,
+            players: array_map(fn ($p) => $p->toArray(), $table->players),
+            rotationSeed: $table->rotationSeed,
+        ));
+
+        $this->syncFromTable($table);
+    }
+
+    public function leaveTable(): void
+    {
+        $table = GameTable::find($this->tableCode);
+
+        if ($table !== null) {
+            $table->removePlayer($this->playerId);
+
+            if ($table->players !== []) {
+                $table->save();
+
+                broadcast(new PlayerLeftTable(
+                    tableCode: $table->code,
                     playerId: $this->playerId,
                     playerName: $this->playerName,
-                    allPlayers: array_map(fn ($p) => $p->toArray(), $room->players),
+                    allPlayers: array_map(fn ($p) => $p->toArray(), $table->players),
                 ));
             }
         }
@@ -337,21 +375,21 @@ final class MultiplayerGameUi extends Component
         return view('livewire.multiplayer-game-ui');
     }
 
-    private function syncFromRoom(GameRoom $room): void
+    private function syncFromTable(GameTable $table): void
     {
-        $this->hostId = $room->hostId;
-        $this->isHost = $room->isHost($this->playerId);
-        $this->status = $room->status->value;
-        $this->players = array_map(fn ($p) => $p->toArray(), $room->players);
-        $this->pileCard = $room->pileCard;
-        $this->handCard = $room->handCard;
-        $this->cardsRemaining = $room->remainingCards();
-        $this->rotationSeed = $room->rotationSeed;
-        $this->winnerId = $room->winnerId;
-        $this->scoreboard = $room->getScoreboard();
+        $this->hostId = $table->hostId;
+        $this->isHost = $table->isHost($this->playerId);
+        $this->status = $table->status->value;
+        $this->players = array_map(fn ($p) => $p->toArray(), $table->players);
+        $this->pileCard = $table->pileCard;
+        $this->handCard = $table->handCard;
+        $this->cardsRemaining = $table->remainingCards();
+        $this->rotationSeed = $table->rotationSeed;
+        $this->winnerId = $table->winnerId;
+        $this->scoreboard = $table->getScoreboard();
 
-        if ($room->winnerId !== null) {
-            $winner = $room->getWinner();
+        if ($table->winnerId !== null) {
+            $winner = $table->getWinner();
             $this->winnerName = $winner?->name ?? 'Unknown';
         }
 

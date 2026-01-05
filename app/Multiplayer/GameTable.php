@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 /**
  * @implements Arrayable<string, mixed>
  */
-final class GameRoom implements Arrayable
+final class GameTable implements Arrayable
 {
     public const MIN_PLAYERS = 2;
 
@@ -44,14 +44,14 @@ final class GameRoom implements Arrayable
 
     public static function create(string $hostId, string $hostName): self
     {
-        $room = new self(
+        $table = new self(
             code: self::generateCode(),
             hostId: $hostId,
         );
 
-        $room->addPlayer($hostId, $hostName);
+        $table->addPlayer($hostId, $hostName);
 
-        return $room;
+        return $table;
     }
 
     public static function generateCode(): string
@@ -65,7 +65,7 @@ final class GameRoom implements Arrayable
 
     public static function cacheKey(string $code): string
     {
-        return "spotit.multiplayer.room.{$code}";
+        return "spotit.multiplayer.table.{$code}";
     }
 
     public static function find(string $code): ?self
@@ -106,7 +106,7 @@ final class GameRoom implements Arrayable
         }
 
         if (isset($this->players[$id])) {
-            return true; // Already in room
+            return true; // Already at table
         }
 
         $this->players[$id] = new GuestPlayer($id, $name);
@@ -118,7 +118,7 @@ final class GameRoom implements Arrayable
     {
         unset($this->players[$id]);
 
-        // If host leaves and game hasn't started, promote next player or delete room
+        // If host leaves and game hasn't started, promote next player or delete table
         if ($id === $this->hostId && $this->status === GameStatus::Waiting) {
             if ($this->players === []) {
                 $this->delete();
@@ -142,20 +142,31 @@ final class GameRoom implements Arrayable
             && count($this->players) >= self::MIN_PLAYERS;
     }
 
-    public function start(): bool
+    public function startCountdown(): bool
     {
         if (! $this->canStart()) {
             return false;
         }
 
-        $this->status = GameStatus::Playing;
-        $this->startedAt = time();
+        $this->status = GameStatus::Countdown;
         $this->rotationSeed = random_int(1, PHP_INT_MAX);
 
         // Reset player scores
         foreach ($this->players as $player) {
             $player->score = 0;
         }
+
+        return true;
+    }
+
+    public function start(): bool
+    {
+        if ($this->status !== GameStatus::Countdown) {
+            return false;
+        }
+
+        $this->status = GameStatus::Playing;
+        $this->startedAt = time();
 
         $deckCards = (new EmojiDeck)->generate();
         $dealer = Dealer::using($deckCards)->shuffle();

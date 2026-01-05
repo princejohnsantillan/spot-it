@@ -69,7 +69,7 @@
                     :matching-symbol="$pendingMatchSymbol"
                     :is-animating="$isAnimating"
                     :disabled="$isAnimating"
-                    ring-color="sky"
+                    card-type="pile"
                     shake="shake"
                     wire-click-method="selectPileSymbol"
                 />
@@ -99,7 +99,7 @@
                         :matching-symbol="$pendingMatchSymbol"
                         :is-animating="$isAnimating"
                         :disabled="$isAnimating"
-                        ring-color="emerald"
+                        card-type="hand"
                         shake="shake"
                         wire-click-method="selectHandSymbol"
                     />

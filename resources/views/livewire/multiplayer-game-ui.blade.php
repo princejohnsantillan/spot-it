@@ -3,7 +3,26 @@
     x-data="{
         shake: false,
         scoringPlayerId: null,
+        copied: false,
+        countdownValue: @entangle('countdown'),
     }"
+    x-init="
+        $watch('countdownValue', (value) => {
+            if (value === 5) {
+                const interval = setInterval(() => {
+                    if (countdownValue > 0) {
+                        countdownValue--;
+                        if (countdownValue === 0) {
+                            clearInterval(interval);
+                            @if ($isHost)
+                                $wire.startGameAfterCountdown();
+                            @endif
+                        }
+                    }
+                }, 1000);
+            }
+        });
+    "
     x-on:spotit-shake.window="shake = true; setTimeout(() => shake = false, 350)"
     x-on:spotit-score-pulse.window="
         scoringPlayerId = $event.detail.playerId;
@@ -17,12 +36,14 @@
                 <div class="flex items-center gap-3">
                     <h1 class="text-xl font-semibold leading-tight">Spot It — Multiplayer</h1>
                     <span class="rounded bg-[#F4F3EF] px-2 py-1 font-mono text-sm font-medium tracking-wider dark:bg-[#161615]">
-                        {{ $roomCode }}
+                        {{ $tableCode }}
                     </span>
                 </div>
                 <p class="text-sm text-[#706f6c] dark:text-[#A1A09A]">
                     @if ($status === 'waiting')
                         Waiting for players to join...
+                    @elseif ($status === 'countdown')
+                        Get ready! Game starting soon...
                     @elseif ($status === 'playing')
                         Click the matching symbol on BOTH cards to score!
                     @else
@@ -33,7 +54,7 @@
 
             <button
                 type="button"
-                wire:click="leaveRoom"
+                wire:click="leaveTable"
                 class="rounded-sm border border-[#19140035] bg-white px-4 py-2 text-sm font-medium leading-normal shadow-sm hover:border-[#1915014a] dark:border-[#3E3E3A] dark:bg-[#161615] dark:hover:border-[#62605b]"
             >
                 Leave
@@ -69,24 +90,87 @@
             @endforeach
         </div>
 
+        {{-- Countdown State --}}
+        @if ($status === 'countdown')
+            <div class="flex flex-1 flex-col items-center justify-center gap-6 py-16">
+                <div class="flex flex-col items-center gap-4 text-center">
+                    <div class="text-2xl font-semibold">Get Ready!</div>
+                    <div
+                        x-show="countdownValue > 0"
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 scale-90"
+                        x-transition:enter-end="opacity-100 scale-100"
+                        x-transition:leave="transition ease-in duration-200"
+                        x-transition:leave-start="opacity-100 scale-100"
+                        x-transition:leave-end="opacity-0 scale-90"
+                        class="flex h-48 w-48 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-sky-600 text-9xl font-bold text-white shadow-2xl"
+                    >
+                        <span x-text="countdownValue"></span>
+                    </div>
+                    <div class="text-lg text-[#706f6c] dark:text-[#A1A09A]">
+                        The game will start automatically...
+                    </div>
+                </div>
+            </div>
+
         {{-- Waiting State --}}
-        @if ($status === 'waiting')
+        @elseif ($status === 'waiting')
             <div class="flex flex-1 flex-col items-center justify-center gap-6 py-16">
                 <div class="flex flex-col items-center gap-2 text-center">
-                    <div class="text-lg font-semibold">Room Code</div>
+                    <div class="text-lg font-semibold">Table Code</div>
                     <div class="rounded-lg bg-[#F4F3EF] px-6 py-4 font-mono text-3xl font-bold tracking-[0.3em] dark:bg-[#161615]">
-                        {{ $roomCode }}
+                        {{ $tableCode }}
                     </div>
-                    <div class="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                        Share this code with friends to join
+                </div>
+
+                {{-- Copy Link Button --}}
+                <div class="flex flex-col items-center gap-2">
+                    <button
+                        type="button"
+                        x-on:click="
+                            navigator.clipboard.writeText('{{ route('multiplayer.join', ['code' => $tableCode]) }}');
+                            copied = true;
+                            setTimeout(() => copied = false, 2000);
+                        "
+                        class="flex items-center gap-2 rounded-md border border-[#19140035] bg-white px-4 py-2 text-sm font-medium shadow-sm hover:border-[#1915014a] dark:border-[#3E3E3A] dark:bg-[#161615] dark:hover:border-[#62605b]"
+                    >
+                        <svg x-show="!copied" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <svg x-show="copied" x-cloak class="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span x-text="copied ? 'Link Copied!' : 'Copy Invite Link'"></span>
+                    </button>
+                    <div class="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                        Share this link with friends to join
+                    </div>
+                </div>
+
+                {{-- Players at Table --}}
+                <div class="flex flex-col items-center gap-3">
+                    <div class="text-sm font-medium text-[#706f6c] dark:text-[#A1A09A]">Players at table</div>
+                    <div class="flex flex-wrap justify-center gap-2">
+                        @foreach ($players as $player)
+                            <div @class([
+                                'rounded-full px-3 py-1.5 text-sm font-medium',
+                                'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300' => $player['id'] === $playerId,
+                                'bg-[#F4F3EF] text-[#706f6c] dark:bg-[#161615] dark:text-[#A1A09A]' => $player['id'] !== $playerId,
+                            ])>
+                                {{ $player['name'] }}
+                                @if ($player['id'] === $hostId)
+                                    <span class="text-xs opacity-60">(host)</span>
+                                @endif
+                            </div>
+                        @endforeach
                     </div>
                 </div>
 
                 <div class="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                    {{ count($players) }} / {{ \App\Multiplayer\GameRoom::MAX_PLAYERS }} players
-                    @if (count($players) < \App\Multiplayer\GameRoom::MIN_PLAYERS)
+                    {{ count($players) }} / {{ \App\Multiplayer\GameTable::MAX_PLAYERS }} players
+                    @if (count($players) < \App\Multiplayer\GameTable::MIN_PLAYERS)
                         <span class="text-amber-600 dark:text-amber-400">
-                            (need at least {{ \App\Multiplayer\GameRoom::MIN_PLAYERS }})
+                            (need at least {{ \App\Multiplayer\GameTable::MIN_PLAYERS }})
                         </span>
                     @endif
                 </div>
@@ -95,7 +179,7 @@
                     <button
                         type="button"
                         wire:click="startGame"
-                        @disabled(count($players) < \App\Multiplayer\GameRoom::MIN_PLAYERS)
+                        @disabled(count($players) < \App\Multiplayer\GameTable::MIN_PLAYERS)
                         class="rounded-md bg-emerald-600 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-[#0a0a0a]"
                     >
                         Start Game
@@ -124,7 +208,7 @@
                     :rotations="$pileRotations"
                     :selected-symbol="$selectedPileSymbol"
                     :disabled="$handCard === []"
-                    ring-color="sky"
+                    card-type="pile"
                     shake="shake"
                     wire-click-method="selectPileSymbol"
                 />
@@ -149,7 +233,7 @@
                         :symbols="$handCard"
                         :rotations="$handRotations"
                         :selected-symbol="$selectedHandSymbol"
-                        ring-color="emerald"
+                        card-type="hand"
                         shake="shake"
                         wire-click-method="selectHandSymbol"
                     />

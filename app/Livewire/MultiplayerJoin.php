@@ -8,40 +8,48 @@ use App\Events\PlayerJoinedTable;
 use App\Multiplayer\GameTable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 
-final class MultiplayerLobby extends Component
+final class MultiplayerJoin extends Component
 {
+    #[Locked]
+    public string $tableCode = '';
+
     #[Validate('required|string|min:2|max:20')]
     public string $nickname = '';
 
-    #[Validate('required|string|size:6|alpha_num')]
-    public string $tableCode = '';
-
     public string $error = '';
 
-    public function mount(): void
+    public bool $tableExists = false;
+
+    public string $tableStatus = '';
+
+    public int $playerCount = 0;
+
+    public function mount(string $code): void
     {
-        // Restore nickname from session if available
+        $this->tableCode = strtoupper($code);
         $this->nickname = session('guest_player_name', '');
-    }
 
-    public function createTable(): void
-    {
-        $this->validate([
-            'nickname' => 'required|string|min:2|max:20',
-        ]);
+        $table = GameTable::find($this->tableCode);
 
-        $this->error = '';
+        if ($table === null) {
+            $this->tableExists = false;
 
-        $playerId = $this->ensureGuestPlayer();
-        session(['guest_player_name' => $this->nickname]);
+            return;
+        }
 
-        $table = GameTable::create($playerId, $this->nickname);
-        $table->save();
+        $this->tableExists = true;
+        $this->tableStatus = $table->status->value;
+        $this->playerCount = count($table->players);
 
-        $this->redirectToTable($table->code);
+        // If user is already at this table, redirect them there
+        $playerId = session('guest_player_id');
+        if ($playerId && $table->getPlayer($playerId) !== null) {
+            $this->redirect(route('multiplayer.table', ['code' => $this->tableCode]), navigate: true);
+        }
     }
 
     public function joinTable(): void
@@ -49,12 +57,12 @@ final class MultiplayerLobby extends Component
         $this->validate();
 
         $this->error = '';
-        $code = strtoupper($this->tableCode);
 
-        $table = GameTable::find($code);
+        $table = GameTable::find($this->tableCode);
 
         if ($table === null) {
-            $this->error = 'Table not found. Check the code and try again.';
+            $this->error = 'Table not found.';
+            $this->tableExists = false;
 
             return;
         }
@@ -89,12 +97,12 @@ final class MultiplayerLobby extends Component
             allPlayers: array_map(fn ($p) => $p->toArray(), $table->players),
         ));
 
-        $this->redirectToTable($table->code);
+        $this->redirect(route('multiplayer.table', ['code' => $table->code]), navigate: true);
     }
 
     public function render(): View
     {
-        return view('livewire.multiplayer-lobby');
+        return view('livewire.multiplayer-join');
     }
 
     private function ensureGuestPlayer(): string
@@ -107,10 +115,5 @@ final class MultiplayerLobby extends Component
         }
 
         return $playerId;
-    }
-
-    private function redirectToTable(string $code): void
-    {
-        $this->redirect(route('multiplayer.table', ['code' => $code]), navigate: true);
     }
 }

@@ -63,40 +63,14 @@ final class MultiplayerGameUi extends Component
 
     public ?string $selectedHandSymbol = null;
 
-    // Animation state - tracks if THIS player is animating their own match
-    public bool $isAnimating = false;
-
-    public ?string $pendingMatchSymbol = null;
-
-    // Overlay state - shown for ALL players when a match happens
-    public bool $showMatchOverlay = false;
-
-    public ?string $overlayPlayerName = null;
-
-    public ?string $overlaySymbol = null;
-
-    public ?string $overlayPlayerId = null;
-
-    public bool $overlayIsMe = false;
-
     /**
-     * Pending card state - stored until overlay clears
+     * Match history log
      *
-     * @var array<int, string>
+     * @var array<int, array{playerName: string, symbol: string, isMe: bool}>
      */
-    public array $pendingPileCard = [];
+    public array $matchHistory = [];
 
-    /**
-     * @var array<int, string>
-     */
-    public array $pendingHandCard = [];
-
-    /**
-     * @var array<int, array<string, mixed>>
-     */
-    public array $pendingPlayers = [];
-
-    public int $pendingCardsRemaining = 0;
+    public ?string $lastScoringPlayerId = null;
 
     public ?string $winnerId = null;
 
@@ -157,8 +131,7 @@ final class MultiplayerGameUi extends Component
 
     public function selectPileSymbol(string $symbol): void
     {
-        // Don't allow selection if animating own match OR if overlay is showing
-        if ($this->status !== 'playing' || $this->isAnimating) {
+        if ($this->status !== 'playing') {
             return;
         }
 
@@ -168,8 +141,7 @@ final class MultiplayerGameUi extends Component
 
     public function selectHandSymbol(string $symbol): void
     {
-        // Don't allow selection if animating own match OR if overlay is showing
-        if ($this->status !== 'playing' || $this->isAnimating) {
+        if ($this->status !== 'playing') {
             return;
         }
 
@@ -191,30 +163,9 @@ final class MultiplayerGameUi extends Component
             return;
         }
 
-        // Start animation for this player
-        $this->isAnimating = true;
-        $this->pendingMatchSymbol = $this->selectedPileSymbol;
-        $this->dispatch('spotit-match');
-    }
-
-    /**
-     * Called after match animation completes (from JS).
-     */
-    public function completeMatch(): void
-    {
-        if (! $this->isAnimating || $this->pendingMatchSymbol === null) {
-            return;
-        }
-
-        $symbol = $this->pendingMatchSymbol;
-
-        try {
-            $this->processMatch($symbol);
-        } finally {
-            $this->isAnimating = false;
-            $this->pendingMatchSymbol = null;
-            $this->resetSelections();
-        }
+        // Process match immediately (no animation delay)
+        $this->processMatch($this->selectedPileSymbol);
+        $this->resetSelections();
     }
 
     private function processMatch(string $symbol): void
@@ -236,25 +187,19 @@ final class MultiplayerGameUi extends Component
 
         $room->save();
 
-        // Store pending state - don't update cards yet (fairness)
-        $this->pendingPileCard = $result['newPileCard'];
-        $this->pendingHandCard = $result['newHandCard'] ?? [];
-        $this->pendingPlayers = array_map(fn ($p) => $p->toArray(), $room->players);
-        $this->pendingCardsRemaining = $room->remainingCards();
+        // Update cards immediately
+        $this->pileCard = $result['newPileCard'];
+        $this->handCard = $result['newHandCard'] ?? [];
+        $this->players = array_map(fn ($p) => $p->toArray(), $room->players);
+        $this->cardsRemaining = $room->remainingCards();
+        $this->syncRotations();
 
-        // Show overlay for THIS player too
-        $this->showMatchOverlay = true;
-        $this->overlayPlayerName = $this->playerName;
-        $this->overlaySymbol = $symbol;
-        $this->overlayPlayerId = $this->playerId;
-        $this->overlayIsMe = true;
+        // Add to match history and trigger score pulse
+        $this->addToMatchHistory($this->playerName, $symbol, true);
+        $this->lastScoringPlayerId = $this->playerId;
+        $this->dispatch('spotit-score-pulse', ['playerId' => $this->playerId]);
 
-        // Dispatch event to trigger overlay animation
-        $this->dispatch('spotit-show-overlay', [
-            'playerId' => $this->playerId,
-        ]);
-
-        // Broadcast the match to all players (sender already has overlay shown)
+        // Broadcast the match to all players
         broadcast(new PlayerMatchedCard(
             roomCode: $room->code,
             playerId: $this->playerId,
@@ -274,6 +219,20 @@ final class MultiplayerGameUi extends Component
                 winnerName: $winner?->name ?? 'Unknown',
                 scoreboard: $room->getScoreboard(),
             ));
+        }
+    }
+
+    private function addToMatchHistory(string $playerName, string $symbol, bool $isMe): void
+    {
+        // Prepend to history (newest first), limit to 10 entries
+        array_unshift($this->matchHistory, [
+            'playerName' => $playerName,
+            'symbol' => $symbol,
+            'isMe' => $isMe,
+        ]);
+
+        if (count($this->matchHistory) > 10) {
+            $this->matchHistory = array_slice($this->matchHistory, 0, 10);
         }
     }
 
@@ -317,64 +276,24 @@ final class MultiplayerGameUi extends Component
     #[On('echo:game.{roomCode},.card.matched')]
     public function onCardMatched(array $data): void
     {
-        // Ignore if this is our own match (we already have overlay shown from processMatch)
+        // Ignore if this is our own match (we already updated from processMatch)
         if ($data['playerId'] === $this->playerId) {
             return;
         }
 
-        // Store pending state - don't update cards yet (fairness)
-        $this->pendingPileCard = $data['newPileCard'];
-        $this->pendingHandCard = $data['newHandCard'] ?? [];
-        $this->pendingPlayers = $data['players'];
-        $this->pendingCardsRemaining = $data['cardsRemaining'];
-
-        // Show overlay for this player
-        $this->showMatchOverlay = true;
-        $this->overlayPlayerName = $data['playerName'];
-        $this->overlaySymbol = $data['matchedSymbol'];
-        $this->overlayPlayerId = $data['playerId'];
-        $this->overlayIsMe = false;
-
-        // Dispatch event to trigger overlay animation
-        $this->dispatch('spotit-show-overlay', [
-            'playerId' => $data['playerId'],
-        ]);
-
-        $this->resetSelections();
-    }
-
-    /**
-     * Called after overlay animation completes - reveals new cards for all players.
-     */
-    public function clearOverlay(): void
-    {
-        // Apply pending card state now
-        if ($this->pendingPileCard !== []) {
-            $this->pileCard = $this->pendingPileCard;
-            $this->pendingPileCard = [];
-        }
-
-        $this->handCard = $this->pendingHandCard;
-        $this->pendingHandCard = [];
-
-        if ($this->pendingPlayers !== []) {
-            $this->players = $this->pendingPlayers;
-            $this->pendingPlayers = [];
-        }
-
-        if ($this->pendingCardsRemaining > 0) {
-            $this->cardsRemaining = $this->pendingCardsRemaining;
-            $this->pendingCardsRemaining = 0;
-        }
-
+        // Update cards immediately
+        $this->pileCard = $data['newPileCard'];
+        $this->handCard = $data['newHandCard'] ?? [];
+        $this->players = $data['players'];
+        $this->cardsRemaining = $data['cardsRemaining'];
         $this->syncRotations();
 
-        // Clear overlay state
-        $this->showMatchOverlay = false;
-        $this->overlayPlayerName = null;
-        $this->overlaySymbol = null;
-        $this->overlayPlayerId = null;
-        $this->overlayIsMe = false;
+        // Add to match history and trigger score pulse
+        $this->addToMatchHistory($data['playerName'], $data['matchedSymbol'], false);
+        $this->lastScoringPlayerId = $data['playerId'];
+        $this->dispatch('spotit-score-pulse', ['playerId' => $data['playerId']]);
+
+        $this->resetSelections();
     }
 
     #[On('echo:game.{roomCode},.game.ended')]

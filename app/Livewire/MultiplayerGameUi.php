@@ -254,7 +254,7 @@ final class MultiplayerGameUi extends Component
             'playerId' => $this->playerId,
         ]);
 
-        // Broadcast the match to other players
+        // Broadcast the match to all players (sender already has overlay shown)
         broadcast(new PlayerMatchedCard(
             roomCode: $room->code,
             playerId: $this->playerId,
@@ -264,7 +264,7 @@ final class MultiplayerGameUi extends Component
             newHandCard: $result['newHandCard'] ?? [],
             players: array_map(fn ($p) => $p->toArray(), $room->players),
             cardsRemaining: $room->remainingCards(),
-        ))->toOthers();
+        ));
 
         if ($result['isGameOver']) {
             $winner = $room->getWinner();
@@ -307,6 +307,11 @@ final class MultiplayerGameUi extends Component
     #[On('echo:game.{roomCode},.card.matched')]
     public function onCardMatched(array $data): void
     {
+        // Ignore if this is our own match (we already have overlay shown from processMatch)
+        if ($data['playerId'] === $this->playerId) {
+            return;
+        }
+
         // Store pending state - don't update cards yet (fairness)
         $this->pendingPileCard = $data['newPileCard'];
         $this->pendingHandCard = $data['newHandCard'] ?? [];
@@ -386,7 +391,7 @@ final class MultiplayerGameUi extends Component
                     playerId: $this->playerId,
                     playerName: $this->playerName,
                     allPlayers: array_map(fn ($p) => $p->toArray(), $room->players),
-                ))->toOthers();
+                ));
             }
         }
 

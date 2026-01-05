@@ -4,7 +4,7 @@
             <div class="flex flex-col gap-1">
                 <h1 class="text-xl font-semibold leading-tight">Spot It — Solo</h1>
                 <p class="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                    Click one symbol on the pile card, then one on your hand card.
+                    Drag a symbol to its match on the other card.
                 </p>
             </div>
 
@@ -46,7 +46,44 @@
             </div>
 
             <div
-                x-data="{ shake: false, matching: false }"
+                x-data="{
+                    shake: false,
+                    matching: false,
+                    dragging: null,
+                    dragSource: null,
+                    dropTarget: null,
+                    handleDragStart(symbol, source) {
+                        if ($wire.isAnimating) return;
+                        this.dragging = symbol;
+                        this.dragSource = source;
+                    },
+                    handleDragEnd() {
+                        this.dragging = null;
+                        this.dragSource = null;
+                        this.dropTarget = null;
+                    },
+                    handleDrop(symbol, target) {
+                        if (!this.dragging || this.matching) return;
+                        if (this.dragSource === target) return;
+
+                        let pileSymbol, handSymbol;
+                        if (this.dragSource === 'pile') {
+                            pileSymbol = this.dragging;
+                            handSymbol = symbol;
+                        } else {
+                            pileSymbol = symbol;
+                            handSymbol = this.dragging;
+                        }
+
+                        $wire.attemptMatch(pileSymbol, handSymbol);
+                        this.handleDragEnd();
+                    },
+                    isValidDropTarget(symbol, target) {
+                        if (!this.dragging) return false;
+                        if (this.dragSource === target) return false;
+                        return this.dragging === symbol;
+                    }
+                }"
                 x-on:spotit-shake.window="shake = true; setTimeout(() => shake = false, 350)"
                 x-on:spotit-match.window="
                     if (matching) return;
@@ -72,23 +109,30 @@
                     <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]">
                         <div class="grid grid-cols-4 gap-3">
                         @foreach ($pileCard as $symbol)
-                            <button
-                                type="button"
+                            <div
                                 wire:key="pile-{{ md5($symbol) }}"
-                                wire:click="selectPileSymbol(@js($symbol))"
-                                @disabled($isAnimating)
+                                draggable="true"
+                                x-on:dragstart="handleDragStart(@js($symbol), 'pile')"
+                                x-on:dragend="handleDragEnd()"
+                                x-on:dragover.prevent="dropTarget = 'pile-' + @js($symbol)"
+                                x-on:dragleave="dropTarget = null"
+                                x-on:drop.prevent="handleDrop(@js($symbol), 'pile')"
+                                x-bind:class="{
+                                    'opacity-50 scale-95': dragging === @js($symbol) && dragSource === 'pile',
+                                    'ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615] border-transparent': isValidDropTarget(@js($symbol), 'pile'),
+                                    'spotit-match spotit-match-pile': $wire.isAnimating && $wire.pendingPileSymbol === @js($symbol),
+                                    'pointer-events-none opacity-70': $wire.isAnimating,
+                                    'cursor-grab active:cursor-grabbing': !$wire.isAnimating
+                                }"
                                 @class([
-                                    'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
-                                    'pointer-events-none opacity-70' => $isAnimating,
-                                    'border-[#19140035] dark:border-[#3E3E3A]' => ! ($isAnimating && $pendingMatchSymbol === $symbol) && $selectedPileSymbol !== $symbol,
-                                    'border-transparent ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => ! ($isAnimating && $pendingMatchSymbol === $symbol) && $selectedPileSymbol === $symbol,
-                                    'spotit-match spotit-match-pile' => $isAnimating && $pendingMatchSymbol === $symbol,
+                                    'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all sm:text-4xl dark:bg-[#0a0a0a] select-none',
+                                    'border-[#19140035] dark:border-[#3E3E3A]',
                                 ])
                             >
-                                <span class="inline-block" style="transform: rotate({{ $pileRotations[$symbol] ?? 0 }}deg)">
+                                <span class="inline-block pointer-events-none" style="transform: rotate({{ $pileRotations[$symbol] ?? 0 }}deg)">
                                     {{ $symbol }}
                                 </span>
-                            </button>
+                            </div>
                         @endforeach
                         </div>
                     </div>
@@ -108,29 +152,36 @@
                             @if ($this->duration)
                                 <div class="mt-1 text-sm text-[#706f6c] dark:text-[#A1A09A]">Duration: {{ $this->duration }}</div>
                             @endif
-                            <div class="mt-1 text-sm text-[#706f6c] dark:text-[#A1A09A]">Hit “New Game” to play again.</div>
+                            <div class="mt-1 text-sm text-[#706f6c] dark:text-[#A1A09A]">Hit "New Game" to play again.</div>
                         </div>
                     @else
                         <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]">
                             <div class="grid grid-cols-4 gap-3">
                                 @foreach ($handCard as $symbol)
-                                    <button
-                                        type="button"
+                                    <div
                                         wire:key="hand-{{ md5($symbol) }}"
-                                        wire:click="selectHandSymbol(@js($symbol))"
-                                        @disabled($isAnimating)
+                                        draggable="true"
+                                        x-on:dragstart="handleDragStart(@js($symbol), 'hand')"
+                                        x-on:dragend="handleDragEnd()"
+                                        x-on:dragover.prevent="dropTarget = 'hand-' + @js($symbol)"
+                                        x-on:dragleave="dropTarget = null"
+                                        x-on:drop.prevent="handleDrop(@js($symbol), 'hand')"
+                                        x-bind:class="{
+                                            'opacity-50 scale-95': dragging === @js($symbol) && dragSource === 'hand',
+                                            'ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615] border-transparent': isValidDropTarget(@js($symbol), 'hand'),
+                                            'spotit-match spotit-match-hand': $wire.isAnimating && $wire.pendingMatchSymbol === @js($symbol),
+                                            'pointer-events-none opacity-70': $wire.isAnimating,
+                                            'cursor-grab active:cursor-grabbing': !$wire.isAnimating
+                                        }"
                                         @class([
-                                            'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
-                                            'pointer-events-none opacity-70' => $isAnimating,
-                                            'border-[#19140035] dark:border-[#3E3E3A]' => ! ($isAnimating && $pendingMatchSymbol === $symbol) && $selectedHandSymbol !== $symbol,
-                                            'border-transparent ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => ! ($isAnimating && $pendingMatchSymbol === $symbol) && $selectedHandSymbol === $symbol,
-                                            'spotit-match spotit-match-hand' => $isAnimating && $pendingMatchSymbol === $symbol,
+                                            'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all sm:text-4xl dark:bg-[#0a0a0a] select-none',
+                                            'border-[#19140035] dark:border-[#3E3E3A]',
                                         ])
                                     >
-                                        <span class="inline-block" style="transform: rotate({{ $handRotations[$symbol] ?? 0 }}deg)">
+                                        <span class="inline-block pointer-events-none" style="transform: rotate({{ $handRotations[$symbol] ?? 0 }}deg)">
                                             {{ $symbol }}
                                         </span>
-                                    </button>
+                                    </div>
                                 @endforeach
                             </div>
                         </div>

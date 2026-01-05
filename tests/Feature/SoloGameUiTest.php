@@ -4,7 +4,7 @@ use App\Livewire\SoloGameUi;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 
-it('shakes and deselects when the selected symbols do not match', function () {
+it('shakes when the dragged symbols do not match', function () {
     $component = Livewire::test(SoloGameUi::class);
 
     session()->put("spotit.solo.{$component->instance()->gameKey}.hand", [['💯', '💀', '🤔', '😍'], ['👍🏼', '🤣', '🎉', '😭']]);
@@ -14,14 +14,11 @@ it('shakes and deselects when the selected symbols do not match', function () {
         ->set('pileCard', ['😂', '😊', '🙏', '🔥'])
         ->set('handCard', ['👍🏼', '🤣', '🎉', '😭'])
         ->set('handRemaining', 2)
-        ->call('selectPileSymbol', '😂')
-        ->call('selectHandSymbol', '🤣')
-        ->assertSet('selectedPileSymbol', null)
-        ->assertSet('selectedHandSymbol', null)
+        ->call('attemptMatch', '😂', '🤣')
         ->assertDispatched('spotit-shake');
 });
 
-it('advances the game when the selected symbols match', function () {
+it('advances the game when the dragged symbols match', function () {
     $nextCard = ['😊', '🙏', '🔥', '🥰'];
     $currentCard = ['😂', '🎉', '😭', '👍🏼'];
     $pileCard = ['😂', '😊', '🙏', '🔥'];
@@ -36,10 +33,10 @@ it('advances the game when the selected symbols match', function () {
         ->set('handCard', $currentCard)
         ->set('handRemaining', 2)
         ->set('pileCount', 1)
-        ->call('selectPileSymbol', '😂')
-        ->call('selectHandSymbol', '😂')
+        ->call('attemptMatch', '😂', '😂')
         ->assertSet('isAnimating', true)
         ->assertSet('pendingMatchSymbol', '😂')
+        ->assertSet('pendingPileSymbol', '😂')
         ->assertDispatched('spotit-match')
         ->assertSet('pileCard', $pileCard)
         ->assertSet('handCard', $currentCard)
@@ -50,8 +47,7 @@ it('advances the game when the selected symbols match', function () {
         ->assertSet('pileCount', 2)
         ->assertSet('isAnimating', false)
         ->assertSet('pendingMatchSymbol', null)
-        ->assertSet('selectedPileSymbol', null)
-        ->assertSet('selectedHandSymbol', null);
+        ->assertSet('pendingPileSymbol', null);
 });
 
 it('starts with an empty state until New Game is clicked', function () {
@@ -79,8 +75,7 @@ it('shows the game duration when the game is finished', function () {
             ->set('handCard', ['😂', '🎉', '😭', '👍🏼'])
             ->set('handRemaining', 1)
             ->set('pileCount', 1)
-            ->call('selectPileSymbol', '😂')
-            ->call('selectHandSymbol', '😂')
+            ->call('attemptMatch', '😂', '😂')
             ->call('completeMatch')
             ->assertSet('isOver', true)
             ->assertSet('finishedAt', Carbon::now()->timestamp)
@@ -108,4 +103,34 @@ it('assigns stable, unique rotations for each symbol on a card', function () {
     $third = $component->instance()->rotationsForCard('pile', $card);
 
     expect($third)->not->toBe($first);
+});
+
+it('shakes when symbols do not exist on the cards', function () {
+    $component = Livewire::test(SoloGameUi::class);
+
+    session()->put("spotit.solo.{$component->instance()->gameKey}.hand", [['👍🏼', '🤣', '🎉', '😭']]);
+
+    $component
+        ->set('hasStarted', true)
+        ->set('pileCard', ['😂', '😊', '🙏', '🔥'])
+        ->set('handCard', ['👍🏼', '🤣', '🎉', '😭'])
+        ->set('handRemaining', 1)
+        ->call('attemptMatch', '🍕', '🍕')
+        ->assertDispatched('spotit-shake');
+});
+
+it('does not allow matching when game is animating', function () {
+    $component = Livewire::test(SoloGameUi::class);
+
+    session()->put("spotit.solo.{$component->instance()->gameKey}.hand", [['😂', '🎉', '😭', '👍🏼']]);
+
+    $component
+        ->set('hasStarted', true)
+        ->set('isAnimating', true)
+        ->set('pileCard', ['😂', '😊', '🙏', '🔥'])
+        ->set('handCard', ['😂', '🎉', '😭', '👍🏼'])
+        ->set('handRemaining', 1)
+        ->call('attemptMatch', '😂', '😂')
+        ->assertNotDispatched('spotit-match')
+        ->assertNotDispatched('spotit-shake');
 });

@@ -104,3 +104,17 @@
 .spotit-overlay-pulse {
     animation: spotit-overlay-pulse 0.5s ease-in-out infinite;
 }
+
+/* Drag and drop styles */
+[draggable='true'] {
+    touch-action: none;
+}
+
+.cursor-grab {
+    cursor: grab;
+}
+
+.cursor-grab:active,
+.active\:cursor-grabbing:active {
+    cursor: grabbing;
+}

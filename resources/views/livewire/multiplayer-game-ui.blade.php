@@ -3,6 +3,39 @@
     x-data="{
         shake: false,
         scoringPlayerId: null,
+        dragging: null,
+        dragSource: null,
+        dropTarget: null,
+        handleDragStart(symbol, source) {
+            this.dragging = symbol;
+            this.dragSource = source;
+        },
+        handleDragEnd() {
+            this.dragging = null;
+            this.dragSource = null;
+            this.dropTarget = null;
+        },
+        handleDrop(symbol, target) {
+            if (!this.dragging) return;
+            if (this.dragSource === target) return;
+
+            let pileSymbol, handSymbol;
+            if (this.dragSource === 'pile') {
+                pileSymbol = this.dragging;
+                handSymbol = symbol;
+            } else {
+                pileSymbol = symbol;
+                handSymbol = this.dragging;
+            }
+
+            $wire.attemptMatch(pileSymbol, handSymbol);
+            this.handleDragEnd();
+        },
+        isValidDropTarget(symbol, target) {
+            if (!this.dragging) return false;
+            if (this.dragSource === target) return false;
+            return this.dragging === symbol;
+        }
     }"
     x-on:spotit-shake.window="shake = true; setTimeout(() => shake = false, 350)"
     x-on:spotit-score-pulse.window="
@@ -24,7 +57,7 @@
                     @if ($status === 'waiting')
                         Waiting for players to join...
                     @elseif ($status === 'playing')
-                        Click the matching symbol on BOTH cards to score!
+                        Drag the matching symbol to its pair on the other card!
                     @else
                         Game Over!
                     @endif
@@ -129,22 +162,29 @@
                     <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]">
                         <div class="grid grid-cols-4 gap-3">
                             @foreach ($pileCard as $symbol)
-                                <button
-                                    type="button"
+                                <div
                                     wire:key="pile-{{ md5($symbol) }}"
-                                    wire:click="selectPileSymbol(@js($symbol))"
-                                    @disabled($handCard === [])
+                                    draggable="{{ $handCard !== [] ? 'true' : 'false' }}"
+                                    x-on:dragstart="handleDragStart(@js($symbol), 'pile')"
+                                    x-on:dragend="handleDragEnd()"
+                                    x-on:dragover.prevent="dropTarget = 'pile-' + @js($symbol)"
+                                    x-on:dragleave="dropTarget = null"
+                                    x-on:drop.prevent="handleDrop(@js($symbol), 'pile')"
+                                    x-bind:class="{
+                                        'opacity-50 scale-95': dragging === @js($symbol) && dragSource === 'pile',
+                                        'ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615] border-transparent': isValidDropTarget(@js($symbol), 'pile'),
+                                        'cursor-grab active:cursor-grabbing': {{ $handCard !== [] ? 'true' : 'false' }}
+                                    }"
                                     @class([
-                                        'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
+                                        'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all sm:text-4xl dark:bg-[#0a0a0a] select-none',
                                         'pointer-events-none opacity-70' => $handCard === [],
-                                        'border-[#19140035] dark:border-[#3E3E3A]' => $selectedPileSymbol !== $symbol,
-                                        'border-transparent ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedPileSymbol === $symbol,
+                                        'border-[#19140035] dark:border-[#3E3E3A]',
                                     ])
                                 >
-                                    <span class="inline-block" style="transform: rotate({{ $pileRotations[$symbol] ?? 0 }}deg)">
+                                    <span class="inline-block pointer-events-none" style="transform: rotate({{ $pileRotations[$symbol] ?? 0 }}deg)">
                                         {{ $symbol }}
                                     </span>
-                                </button>
+                                </div>
                             @endforeach
                         </div>
                     </div>
@@ -168,20 +208,28 @@
                         <div class="rounded-md bg-[#F4F3EF] p-4 shadow-sm dark:bg-[#0f0f0f]">
                             <div class="grid grid-cols-4 gap-3">
                                 @foreach ($handCard as $symbol)
-                                    <button
-                                        type="button"
+                                    <div
                                         wire:key="hand-{{ md5($symbol) }}"
-                                        wire:click="selectHandSymbol(@js($symbol))"
+                                        draggable="true"
+                                        x-on:dragstart="handleDragStart(@js($symbol), 'hand')"
+                                        x-on:dragend="handleDragEnd()"
+                                        x-on:dragover.prevent="dropTarget = 'hand-' + @js($symbol)"
+                                        x-on:dragleave="dropTarget = null"
+                                        x-on:drop.prevent="handleDrop(@js($symbol), 'hand')"
+                                        x-bind:class="{
+                                            'opacity-50 scale-95': dragging === @js($symbol) && dragSource === 'hand',
+                                            'ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615] border-transparent': isValidDropTarget(@js($symbol), 'hand'),
+                                            'cursor-grab active:cursor-grabbing': true
+                                        }"
                                         @class([
-                                            'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
-                                            'border-[#19140035] dark:border-[#3E3E3A]' => $selectedHandSymbol !== $symbol,
-                                            'border-transparent ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedHandSymbol === $symbol,
+                                            'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all sm:text-4xl dark:bg-[#0a0a0a] select-none',
+                                            'border-[#19140035] dark:border-[#3E3E3A]',
                                         ])
                                     >
-                                        <span class="inline-block" style="transform: rotate({{ $handRotations[$symbol] ?? 0 }}deg)">
+                                        <span class="inline-block pointer-events-none" style="transform: rotate({{ $handRotations[$symbol] ?? 0 }}deg)">
                                             {{ $symbol }}
                                         </span>
-                                    </button>
+                                    </div>
                                 @endforeach
                             </div>
                         </div>

@@ -59,9 +59,9 @@ final class MultiplayerGameUi extends Component
 
     public int $rotationSeed = 0;
 
-    public ?string $selectedPileSymbol = null;
+    public ?string $pendingPileSymbol = null;
 
-    public ?string $selectedHandSymbol = null;
+    public ?string $pendingHandSymbol = null;
 
     /**
      * Match history log
@@ -129,43 +129,36 @@ final class MultiplayerGameUi extends Component
         $this->syncFromRoom($room);
     }
 
-    public function selectPileSymbol(string $symbol): void
+    public function attemptMatch(string $pileSymbol, string $handSymbol): void
     {
         if ($this->status !== 'playing') {
-            return;
-        }
-
-        $this->selectedPileSymbol = $this->selectedPileSymbol === $symbol ? null : $symbol;
-        $this->resolveSelection();
-    }
-
-    public function selectHandSymbol(string $symbol): void
-    {
-        if ($this->status !== 'playing') {
-            return;
-        }
-
-        $this->selectedHandSymbol = $this->selectedHandSymbol === $symbol ? null : $symbol;
-        $this->resolveSelection();
-    }
-
-    private function resolveSelection(): void
-    {
-        if ($this->selectedPileSymbol === null || $this->selectedHandSymbol === null) {
             return;
         }
 
         // Symbols must match
-        if ($this->selectedPileSymbol !== $this->selectedHandSymbol) {
-            $this->resetSelections();
+        if ($pileSymbol !== $handSymbol) {
             $this->dispatch('spotit-shake');
 
             return;
         }
 
-        // Process match immediately (no animation delay)
-        $this->processMatch($this->selectedPileSymbol);
-        $this->resetSelections();
+        // Verify both symbols exist on their respective cards
+        if (! in_array($pileSymbol, $this->pileCard, true) || ! in_array($handSymbol, $this->handCard, true)) {
+            $this->dispatch('spotit-shake');
+
+            return;
+        }
+
+        // Store pending symbols for animation highlighting
+        $this->pendingPileSymbol = $pileSymbol;
+        $this->pendingHandSymbol = $handSymbol;
+
+        // Process match immediately (no animation delay in multiplayer)
+        $this->processMatch($pileSymbol);
+
+        // Reset pending symbols after processing
+        $this->pendingPileSymbol = null;
+        $this->pendingHandSymbol = null;
     }
 
     private function processMatch(string $symbol): void
@@ -238,8 +231,8 @@ final class MultiplayerGameUi extends Component
 
     private function resetSelections(): void
     {
-        $this->selectedPileSymbol = null;
-        $this->selectedHandSymbol = null;
+        $this->pendingPileSymbol = null;
+        $this->pendingHandSymbol = null;
     }
 
     #[On('echo:game.{roomCode},.player.joined')]

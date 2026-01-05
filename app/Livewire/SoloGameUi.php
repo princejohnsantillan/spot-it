@@ -41,10 +41,6 @@ final class SoloGameUi extends Component
 
     public bool $isOver = false;
 
-    public ?string $selectedPileSymbol = null;
-
-    public ?string $selectedHandSymbol = null;
-
     public bool $hasStarted = false;
 
     public ?int $startedAt = null;
@@ -54,6 +50,8 @@ final class SoloGameUi extends Component
     public bool $isAnimating = false;
 
     public ?string $pendingMatchSymbol = null;
+
+    public ?string $pendingPileSymbol = null;
 
     public int $rotationSeed = 0;
 
@@ -76,6 +74,7 @@ final class SoloGameUi extends Component
         $this->isOver = false;
         $this->isAnimating = false;
         $this->pendingMatchSymbol = null;
+        $this->pendingPileSymbol = null;
         $this->rotationSeed = random_int(1, PHP_INT_MAX);
 
         $deck = (new EmojiDeck)->generate();
@@ -93,29 +92,33 @@ final class SoloGameUi extends Component
 
         $this->syncHandCard();
         $this->syncRotations();
-        $this->resetSelections();
     }
 
-    public function selectPileSymbol(string $symbol): void
+    public function attemptMatch(string $pileSymbol, string $handSymbol): void
     {
-        if (! $this->hasStarted || $this->isAnimating) {
+        if (! $this->hasStarted || $this->isAnimating || $this->isOver) {
             return;
         }
 
-        $this->selectedPileSymbol = $this->selectedPileSymbol === $symbol ? null : $symbol;
+        // Check if symbols match
+        if ($pileSymbol !== $handSymbol) {
+            $this->dispatch('spotit-shake');
 
-        $this->resolveSelection();
-    }
-
-    public function selectHandSymbol(string $symbol): void
-    {
-        if (! $this->hasStarted || $this->isAnimating) {
             return;
         }
 
-        $this->selectedHandSymbol = $this->selectedHandSymbol === $symbol ? null : $symbol;
+        // Verify both symbols exist on their respective cards
+        if (! in_array($pileSymbol, $this->pileCard, true) || ! in_array($handSymbol, $this->handCard, true)) {
+            $this->dispatch('spotit-shake');
 
-        $this->resolveSelection();
+            return;
+        }
+
+        // Start match animation
+        $this->isAnimating = true;
+        $this->pendingMatchSymbol = $handSymbol;
+        $this->pendingPileSymbol = $pileSymbol;
+        $this->dispatch('spotit-match');
     }
 
     public function getDurationProperty(): ?string
@@ -129,9 +132,6 @@ final class SoloGameUi extends Component
         return $this->formatDurationForHumans($seconds);
     }
 
-    /**
-     * @return string[]
-     */
     public function completeMatch(): void
     {
         if (! $this->hasStarted || ! $this->isAnimating || $this->pendingMatchSymbol === null) {
@@ -145,29 +145,8 @@ final class SoloGameUi extends Component
         } finally {
             $this->isAnimating = false;
             $this->pendingMatchSymbol = null;
+            $this->pendingPileSymbol = null;
         }
-    }
-
-    private function resolveSelection(): void
-    {
-        if ($this->selectedPileSymbol === null || $this->selectedHandSymbol === null) {
-            return;
-        }
-
-        if ($this->selectedPileSymbol !== $this->selectedHandSymbol) {
-            $this->resetSelections();
-            $this->dispatch('spotit-shake');
-
-            return;
-        }
-
-        if ($this->isAnimating) {
-            return;
-        }
-
-        $this->isAnimating = true;
-        $this->pendingMatchSymbol = $this->selectedPileSymbol;
-        $this->dispatch('spotit-match');
     }
 
     private function handleMatch(string $symbol): void
@@ -177,7 +156,6 @@ final class SoloGameUi extends Component
         }
 
         if (! in_array($symbol, $this->pileCard, true) || ! in_array($symbol, $this->handCard, true)) {
-            $this->resetSelections();
             $this->dispatch('spotit-shake');
 
             return;
@@ -190,7 +168,6 @@ final class SoloGameUi extends Component
         if ($matchedCard === null) {
             $this->syncHandCard();
             $this->syncRotations();
-            $this->resetSelections();
 
             return;
         }
@@ -200,7 +177,6 @@ final class SoloGameUi extends Component
 
         $this->syncHandCard();
         $this->syncRotations();
-        $this->resetSelections();
     }
 
     private function syncHandCard(): void
@@ -214,12 +190,6 @@ final class SoloGameUi extends Component
         if ($this->hasStarted && $this->isOver && $this->finishedAt === null) {
             $this->finishedAt = Carbon::now()->timestamp;
         }
-    }
-
-    private function resetSelections(): void
-    {
-        $this->selectedPileSymbol = null;
-        $this->selectedHandSymbol = null;
     }
 
     private function resetGame(): void
@@ -237,9 +207,8 @@ final class SoloGameUi extends Component
         $this->finishedAt = null;
         $this->isAnimating = false;
         $this->pendingMatchSymbol = null;
+        $this->pendingPileSymbol = null;
         $this->rotationSeed = 0;
-
-        $this->resetSelections();
     }
 
     private function ensureGameKey(): void

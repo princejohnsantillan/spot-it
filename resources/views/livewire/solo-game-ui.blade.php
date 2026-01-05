@@ -9,6 +9,13 @@
             </div>
 
             <div class="flex items-center gap-3">
+                <a
+                    href="{{ route('multiplayer.lobby') }}"
+                    wire:navigate
+                    class="rounded-sm border border-[#19140035] bg-white px-4 py-2 text-sm font-medium leading-normal shadow-[0px_0px_1px_0px_rgba(0,0,0,0.03),0px_1px_2px_0px_rgba(0,0,0,0.06)] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:bg-[#161615] dark:hover:border-[#62605b]"
+                >
+                    Multiplayer
+                </a>
                 <button
                     type="button"
                     wire:click="startNewGame"

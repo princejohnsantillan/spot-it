@@ -35,21 +35,24 @@
 
         // Touch events
         handleTouchStart(e, symbol, source) {
+            e.preventDefault();
+
             const touch = e.touches[0];
             this.dragging = symbol;
             this.dragSource = source;
 
-            // Create floating drag element
-            const rect = e.target.getBoundingClientRect();
-            this.touchDragEl = e.target.cloneNode(true);
+            // Create floating drag element immediately
+            const target = e.target.closest('[data-symbol]');
+            const rect = target.getBoundingClientRect();
+            this.touchDragEl = target.cloneNode(true);
             this.touchDragEl.classList.add('spotit-touch-drag');
             this.touchDragEl.style.width = rect.width + 'px';
             this.touchDragEl.style.height = rect.height + 'px';
-            this.touchDragEl.style.left = touch.clientX - rect.width / 2 + 'px';
-            this.touchDragEl.style.top = touch.clientY - rect.height / 2 + 'px';
+            this.touchDragEl.style.left = rect.left + 'px';
+            this.touchDragEl.style.top = rect.top + 'px';
             document.body.appendChild(this.touchDragEl);
 
-            e.target.classList.add('opacity-50', 'scale-95');
+            target.classList.add('opacity-50', 'scale-95');
         },
         handleTouchMove(e) {
             if (!this.dragging || !this.touchDragEl) return;
@@ -62,10 +65,12 @@
             this.touchDragEl.style.left = touch.clientX - rect.width / 2 + 'px';
             this.touchDragEl.style.top = touch.clientY - rect.height / 2 + 'px';
         },
-        handleTouchEnd(e, originalTarget) {
+        handleTouchEnd(e) {
             if (!this.dragging) return;
 
-            originalTarget.classList.remove('opacity-50', 'scale-95');
+            // Reset original element
+            const original = document.querySelector('[data-symbol].opacity-50');
+            if (original) original.classList.remove('opacity-50', 'scale-95');
 
             // Remove floating element
             if (this.touchDragEl) {
@@ -235,7 +240,7 @@
                                     @if($handCard !== [])
                                     x-on:touchstart="handleTouchStart($event, @js($symbol), 'pile')"
                                     x-on:touchmove="handleTouchMove($event)"
-                                    x-on:touchend="handleTouchEnd($event, $el)"
+                                    x-on:touchend="handleTouchEnd($event)"
                                     @endif
                                     x-bind:class="{
                                         'opacity-50 scale-95': dragging === @js($symbol) && dragSource === 'pile',
@@ -285,7 +290,7 @@
                                         x-on:drop.prevent="handleDrop(@js($symbol), 'hand')"
                                         x-on:touchstart="handleTouchStart($event, @js($symbol), 'hand')"
                                         x-on:touchmove="handleTouchMove($event)"
-                                        x-on:touchend="handleTouchEnd($event, $el)"
+                                        x-on:touchend="handleTouchEnd($event)"
                                         x-bind:class="{
                                             'opacity-50 scale-95': dragging === @js($symbol) && dragSource === 'hand',
                                             'cursor-grab active:cursor-grabbing': true

@@ -82,12 +82,12 @@ final class MultiplayerLobby extends Component
 
         $room->save();
 
-        // Broadcast to other players
+        // Broadcast to all players in the room
         broadcast(new PlayerJoinedRoom(
             roomCode: $room->code,
             player: $room->getPlayer($playerId)->toArray(),
             allPlayers: array_map(fn ($p) => $p->toArray(), $room->players),
-        ))->toOthers();
+        ));
 
         $this->redirectToRoom($room->code);
     }

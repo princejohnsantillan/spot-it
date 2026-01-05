@@ -63,7 +63,40 @@ final class MultiplayerGameUi extends Component
 
     public ?string $selectedHandSymbol = null;
 
+    // Animation state - tracks if THIS player is animating their own match
     public bool $isAnimating = false;
+
+    public ?string $pendingMatchSymbol = null;
+
+    // Overlay state - shown for ALL players when a match happens
+    public bool $showMatchOverlay = false;
+
+    public ?string $overlayPlayerName = null;
+
+    public ?string $overlaySymbol = null;
+
+    public ?string $overlayPlayerId = null;
+
+    public bool $overlayIsMe = false;
+
+    /**
+     * Pending card state - stored until overlay clears
+     *
+     * @var array<int, string>
+     */
+    public array $pendingPileCard = [];
+
+    /**
+     * @var array<int, string>
+     */
+    public array $pendingHandCard = [];
+
+    /**
+     * @var array<int, array<string, mixed>>
+     */
+    public array $pendingPlayers = [];
+
+    public int $pendingCardsRemaining = 0;
 
     public ?string $winnerId = null;
 
@@ -73,10 +106,6 @@ final class MultiplayerGameUi extends Component
      * @var array<string, int>
      */
     public array $scoreboard = [];
-
-    public ?string $lastMatchedBy = null;
-
-    public ?string $lastMatchedSymbol = null;
 
     public function mount(string $code): void
     {
@@ -128,6 +157,7 @@ final class MultiplayerGameUi extends Component
 
     public function selectPileSymbol(string $symbol): void
     {
+        // Don't allow selection if animating own match OR if overlay is showing
         if ($this->status !== 'playing' || $this->isAnimating) {
             return;
         }
@@ -138,6 +168,7 @@ final class MultiplayerGameUi extends Component
 
     public function selectHandSymbol(string $symbol): void
     {
+        // Don't allow selection if animating own match OR if overlay is showing
         if ($this->status !== 'playing' || $this->isAnimating) {
             return;
         }
@@ -160,11 +191,33 @@ final class MultiplayerGameUi extends Component
             return;
         }
 
-        // Attempt the match
-        $this->attemptMatch($this->selectedPileSymbol, $this->selectedHandSymbol);
+        // Start animation for this player
+        $this->isAnimating = true;
+        $this->pendingMatchSymbol = $this->selectedPileSymbol;
+        $this->dispatch('spotit-match');
     }
 
-    private function attemptMatch(string $pileSymbol, string $handSymbol): void
+    /**
+     * Called after match animation completes (from JS).
+     */
+    public function completeMatch(): void
+    {
+        if (! $this->isAnimating || $this->pendingMatchSymbol === null) {
+            return;
+        }
+
+        $symbol = $this->pendingMatchSymbol;
+
+        try {
+            $this->processMatch($symbol);
+        } finally {
+            $this->isAnimating = false;
+            $this->pendingMatchSymbol = null;
+            $this->resetSelections();
+        }
+    }
+
+    private function processMatch(string $symbol): void
     {
         $room = GameRoom::find($this->roomCode);
 
@@ -172,27 +225,46 @@ final class MultiplayerGameUi extends Component
             return;
         }
 
-        $result = $room->attemptMatch($this->playerId, $pileSymbol, $handSymbol);
+        $result = $room->attemptMatch($this->playerId, $symbol, $symbol);
 
         if (! $result['success']) {
-            // Wrong match - shake
+            // Match failed (someone else got it first) - shake
             $this->dispatch('spotit-shake');
-            $this->resetSelections();
 
             return;
         }
 
         $room->save();
 
-        // Broadcast the match to all players
+        // Store pending state - don't update cards yet (fairness)
+        $this->pendingPileCard = $result['newPileCard'];
+        $this->pendingHandCard = $result['newHandCard'] ?? [];
+        $this->pendingPlayers = array_map(fn ($p) => $p->toArray(), $room->players);
+        $this->pendingCardsRemaining = $room->remainingCards();
+
+        // Show overlay for THIS player too
+        $this->showMatchOverlay = true;
+        $this->overlayPlayerName = $this->playerName;
+        $this->overlaySymbol = $symbol;
+        $this->overlayPlayerId = $this->playerId;
+        $this->overlayIsMe = true;
+
+        // Dispatch event to trigger overlay animation
+        $this->dispatch('spotit-show-overlay', [
+            'playerId' => $this->playerId,
+        ]);
+
+        // Broadcast the match to other players
         broadcast(new PlayerMatchedCard(
             roomCode: $room->code,
             playerId: $this->playerId,
             playerName: $this->playerName,
-            matchedSymbol: $pileSymbol,
+            matchedSymbol: $symbol,
             newPileCard: $result['newPileCard'],
+            newHandCard: $result['newHandCard'] ?? [],
             players: array_map(fn ($p) => $p->toArray(), $room->players),
-        ));
+            cardsRemaining: $room->remainingCards(),
+        ))->toOthers();
 
         if ($result['isGameOver']) {
             $winner = $room->getWinner();
@@ -203,10 +275,6 @@ final class MultiplayerGameUi extends Component
                 scoreboard: $room->getScoreboard(),
             ));
         }
-
-        $this->syncFromRoom($room);
-        $this->resetSelections();
-        $this->dispatch('spotit-match');
     }
 
     private function resetSelections(): void
@@ -239,17 +307,59 @@ final class MultiplayerGameUi extends Component
     #[On('echo:game.{roomCode},.card.matched')]
     public function onCardMatched(array $data): void
     {
-        $this->lastMatchedBy = $data['playerName'];
-        $this->lastMatchedSymbol = $data['matchedSymbol'];
+        // Store pending state - don't update cards yet (fairness)
+        $this->pendingPileCard = $data['newPileCard'];
+        $this->pendingHandCard = $data['newHandCard'] ?? [];
+        $this->pendingPlayers = $data['players'];
+        $this->pendingCardsRemaining = $data['cardsRemaining'];
 
-        // Reload from cache to get latest state
-        $room = GameRoom::find($this->roomCode);
-        if ($room !== null) {
-            $this->syncFromRoom($room);
-        }
+        // Show overlay for this player
+        $this->showMatchOverlay = true;
+        $this->overlayPlayerName = $data['playerName'];
+        $this->overlaySymbol = $data['matchedSymbol'];
+        $this->overlayPlayerId = $data['playerId'];
+        $this->overlayIsMe = false;
+
+        // Dispatch event to trigger overlay animation
+        $this->dispatch('spotit-show-overlay', [
+            'playerId' => $data['playerId'],
+        ]);
 
         $this->resetSelections();
-        $this->dispatch('spotit-other-match');
+    }
+
+    /**
+     * Called after overlay animation completes - reveals new cards for all players.
+     */
+    public function clearOverlay(): void
+    {
+        // Apply pending card state now
+        if ($this->pendingPileCard !== []) {
+            $this->pileCard = $this->pendingPileCard;
+            $this->pendingPileCard = [];
+        }
+
+        $this->handCard = $this->pendingHandCard;
+        $this->pendingHandCard = [];
+
+        if ($this->pendingPlayers !== []) {
+            $this->players = $this->pendingPlayers;
+            $this->pendingPlayers = [];
+        }
+
+        if ($this->pendingCardsRemaining > 0) {
+            $this->cardsRemaining = $this->pendingCardsRemaining;
+            $this->pendingCardsRemaining = 0;
+        }
+
+        $this->syncRotations();
+
+        // Clear overlay state
+        $this->showMatchOverlay = false;
+        $this->overlayPlayerName = null;
+        $this->overlaySymbol = null;
+        $this->overlayPlayerId = null;
+        $this->overlayIsMe = false;
     }
 
     #[On('echo:game.{roomCode},.game.ended')]

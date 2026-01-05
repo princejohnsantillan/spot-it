@@ -68,3 +68,39 @@
 .dark .spotit-match-hand {
     --spotit-ring-offset-rgb: 22 22 21;
 }
+
+@keyframes spotit-score-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+    25% {
+        transform: scale(1.15);
+    }
+    50% {
+        transform: scale(1);
+    }
+    75% {
+        transform: scale(1.1);
+    }
+}
+
+.spotit-score-pulse {
+    animation: spotit-score-pulse 0.6s ease-in-out;
+}
+
+@keyframes spotit-overlay-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+}
+
+.spotit-overlay-pulse {
+    animation: spotit-overlay-pulse 0.5s ease-in-out infinite;
+}

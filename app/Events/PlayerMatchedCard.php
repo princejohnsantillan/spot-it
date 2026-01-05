@@ -18,6 +18,7 @@ final class PlayerMatchedCard implements ShouldBroadcastNow
 
     /**
      * @param  array<int, string>  $newPileCard
+     * @param  array<int, string>  $newHandCard
      * @param  array<int, array<string, mixed>>  $players
      */
     public function __construct(
@@ -26,7 +27,9 @@ final class PlayerMatchedCard implements ShouldBroadcastNow
         public string $playerName,
         public string $matchedSymbol,
         public array $newPileCard,
+        public array $newHandCard,
         public array $players,
+        public int $cardsRemaining,
     ) {}
 
     /**

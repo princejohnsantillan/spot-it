@@ -1,9 +1,25 @@
 <div
     class="min-h-screen bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]"
-    x-data="{ shake: false, matching: false }"
+    x-data="{
+        shake: false,
+        matching: false,
+        scoringPlayerId: null,
+    }"
     x-on:spotit-shake.window="shake = true; setTimeout(() => shake = false, 350)"
-    x-on:spotit-match.window="matching = true; setTimeout(() => matching = false, 360)"
-    x-on:spotit-other-match.window="matching = true; setTimeout(() => matching = false, 360)"
+    x-on:spotit-match.window="
+        if (matching) return;
+        matching = true;
+        setTimeout(() => {
+            $wire.completeMatch().then(() => matching = false).catch(() => matching = false);
+        }, 360);
+    "
+    x-on:spotit-show-overlay.window="
+        scoringPlayerId = $event.detail.playerId;
+        setTimeout(() => {
+            scoringPlayerId = null;
+            $wire.clearOverlay();
+        }, 800);
+    "
 >
     <div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6 lg:p-8">
         {{-- Header --}}
@@ -38,14 +54,22 @@
         {{-- Players & Scores --}}
         <div class="flex flex-wrap items-center gap-2">
             @foreach ($players as $player)
-                <div @class([
-                    'flex items-center gap-2 rounded-full px-3 py-1.5 text-sm',
-                    'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300' => $player['id'] === $playerId,
-                    'bg-[#F4F3EF] text-[#706f6c] dark:bg-[#161615] dark:text-[#A1A09A]' => $player['id'] !== $playerId,
-                ])>
+                <div
+                    x-bind:class="{
+                        'spotit-score-pulse': scoringPlayerId === '{{ $player['id'] }}'
+                    }"
+                    @class([
+                        'flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all',
+                        'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300' => $player['id'] === $playerId,
+                        'bg-[#F4F3EF] text-[#706f6c] dark:bg-[#161615] dark:text-[#A1A09A]' => $player['id'] !== $playerId,
+                    ])
+                >
                     <span class="font-medium">{{ $player['name'] }}</span>
                     @if ($status === 'playing' || $status === 'finished')
-                        <span class="rounded bg-white/50 px-1.5 py-0.5 text-xs font-semibold dark:bg-black/20">
+                        <span
+                            x-bind:class="{ 'spotit-score-pulse': scoringPlayerId === '{{ $player['id'] }}' }"
+                            class="rounded bg-white/50 px-1.5 py-0.5 text-xs font-semibold dark:bg-black/20"
+                        >
                             {{ $player['score'] }} pts
                         </span>
                     @endif
@@ -103,25 +127,10 @@
                 </div>
             </div>
 
-            {{-- Match notification --}}
-            @if ($lastMatchedBy)
-                <div
-                    x-data="{ show: true }"
-                    x-init="setTimeout(() => show = false, 2000)"
-                    x-show="show"
-                    x-transition:leave="transition ease-in duration-300"
-                    x-transition:leave-start="opacity-100"
-                    x-transition:leave-end="opacity-0"
-                    class="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                >
-                    <span class="font-medium">{{ $lastMatchedBy }}</span> spotted {{ $lastMatchedSymbol }}!
-                </div>
-            @endif
-
             <div class="grid gap-6 lg:grid-cols-2">
                 {{-- Pile Card --}}
                 <section
-                    class="rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
+                    class="relative rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
                     x-bind:class="{ 'spotit-shake': shake }"
                 >
                     <div class="mb-4 flex items-center justify-between gap-4">
@@ -135,12 +144,13 @@
                                     type="button"
                                     wire:key="pile-{{ md5($symbol) }}"
                                     wire:click="selectPileSymbol(@js($symbol))"
-                                    @disabled($isAnimating || $handCard === [])
+                                    @disabled($isAnimating || $showMatchOverlay || $handCard === [])
                                     @class([
                                         'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
-                                        'pointer-events-none opacity-70' => $isAnimating || $handCard === [],
-                                        'border-[#19140035] dark:border-[#3E3E3A]' => $selectedPileSymbol !== $symbol,
-                                        'border-transparent ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedPileSymbol === $symbol,
+                                        'pointer-events-none opacity-70' => $isAnimating || $showMatchOverlay || $handCard === [],
+                                        'border-[#19140035] dark:border-[#3E3E3A]' => !($isAnimating && $pendingMatchSymbol === $symbol) && $selectedPileSymbol !== $symbol,
+                                        'border-transparent ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => !($isAnimating && $pendingMatchSymbol === $symbol) && $selectedPileSymbol === $symbol,
+                                        'spotit-match' => $isAnimating && $pendingMatchSymbol === $symbol,
                                     ])
                                 >
                                     <span class="inline-block" style="transform: rotate({{ $pileRotations[$symbol] ?? 0 }}deg)">
@@ -150,11 +160,27 @@
                             @endforeach
                         </div>
                     </div>
+
+                    {{-- Match overlay --}}
+                    @if ($showMatchOverlay)
+                        <div class="absolute inset-0 flex items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm">
+                            <div class="flex flex-col items-center gap-2 text-white">
+                                <span class="spotit-overlay-pulse text-5xl">{{ $overlaySymbol }}</span>
+                                <span class="text-sm font-semibold">
+                                    @if ($overlayIsMe)
+                                        You spotted it!
+                                    @else
+                                        {{ $overlayPlayerName }} spotted it!
+                                    @endif
+                                </span>
+                            </div>
+                        </div>
+                    @endif
                 </section>
 
                 {{-- Hand Card (Shared) --}}
                 <section
-                    class="rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
+                    class="relative rounded-lg border border-[#19140035] bg-white p-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:border-[#3E3E3A] dark:bg-[#161615] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
                     x-bind:class="{ 'spotit-shake': shake }"
                 >
                     <div class="mb-4 flex items-center justify-between gap-4">
@@ -174,12 +200,13 @@
                                         type="button"
                                         wire:key="hand-{{ md5($symbol) }}"
                                         wire:click="selectHandSymbol(@js($symbol))"
-                                        @disabled($isAnimating)
+                                        @disabled($isAnimating || $showMatchOverlay)
                                         @class([
                                             'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all hover:border-[#1915014a] sm:text-4xl dark:bg-[#0a0a0a] dark:hover:border-[#62605b]',
-                                            'pointer-events-none opacity-70' => $isAnimating,
-                                            'border-[#19140035] dark:border-[#3E3E3A]' => $selectedHandSymbol !== $symbol,
-                                            'border-transparent ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => $selectedHandSymbol === $symbol,
+                                            'pointer-events-none opacity-70' => $isAnimating || $showMatchOverlay,
+                                            'border-[#19140035] dark:border-[#3E3E3A]' => !($isAnimating && $pendingMatchSymbol === $symbol) && $selectedHandSymbol !== $symbol,
+                                            'border-transparent ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615]' => !($isAnimating && $pendingMatchSymbol === $symbol) && $selectedHandSymbol === $symbol,
+                                            'spotit-match' => $isAnimating && $pendingMatchSymbol === $symbol,
                                         ])
                                     >
                                         <span class="inline-block" style="transform: rotate({{ $handRotations[$symbol] ?? 0 }}deg)">
@@ -187,6 +214,22 @@
                                         </span>
                                     </button>
                                 @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Match overlay --}}
+                    @if ($showMatchOverlay)
+                        <div class="absolute inset-0 flex items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm">
+                            <div class="flex flex-col items-center gap-2 text-white">
+                                <span class="spotit-overlay-pulse text-5xl">{{ $overlaySymbol }}</span>
+                                <span class="text-sm font-semibold">
+                                    @if ($overlayIsMe)
+                                        You spotted it!
+                                    @else
+                                        {{ $overlayPlayerName }} spotted it!
+                                    @endif
+                                </span>
                             </div>
                         </div>
                     @endif

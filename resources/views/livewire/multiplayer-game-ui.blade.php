@@ -270,14 +270,14 @@
         @else
             <div class="flex flex-1 flex-col items-center justify-center gap-6 py-16">
                 <div class="flex flex-col items-center gap-2 text-center">
-                    <div class="text-4xl">🎉</div>
-                    <div class="text-2xl font-semibold">
-                        @if ($winnerId === $playerId)
-                            You Win!
-                        @else
-                            {{ $winnerName }} Wins!
-                        @endif
-                    </div>
+                    @if ($winnerId === $playerId)
+                        <div class="text-4xl">🎉</div>
+                        <div class="text-2xl font-semibold">You Win!</div>
+                    @else
+                        <div class="text-4xl">😢</div>
+                        <div class="text-2xl font-semibold">You lost...</div>
+                        <div class="text-sm text-[#706f6c] dark:text-[#A1A09A]">{{ $winnerName }} wins!</div>
+                    @endif
                 </div>
 
                 {{-- Scoreboard --}}

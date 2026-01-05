@@ -118,3 +118,24 @@
 .active\:cursor-grabbing:active {
     cursor: grabbing;
 }
+
+/* Touch drag floating element */
+.spotit-touch-drag {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.9;
+    transform: scale(1.1);
+    box-shadow:
+        0 10px 25px -5px rgb(0 0 0 / 0.2),
+        0 8px 10px -6px rgb(0 0 0 / 0.2);
+    border-radius: 0.375rem;
+}
+
+/* Prevent text selection during drag */
+.touch-none {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}

@@ -51,7 +51,9 @@
                     matching: false,
                     dragging: null,
                     dragSource: null,
-                    dropTarget: null,
+                    touchDragEl: null,
+
+                    // Mouse drag events
                     handleDragStart(symbol, source) {
                         if ($wire.isAnimating) return;
                         this.dragging = symbol;
@@ -60,7 +62,6 @@
                     handleDragEnd() {
                         this.dragging = null;
                         this.dragSource = null;
-                        this.dropTarget = null;
                     },
                     handleDrop(symbol, target) {
                         if (!this.dragging || this.matching) return;
@@ -78,10 +79,72 @@
                         $wire.attemptMatch(pileSymbol, handSymbol);
                         this.handleDragEnd();
                     },
-                    isValidDropTarget(symbol, target) {
-                        if (!this.dragging) return false;
-                        if (this.dragSource === target) return false;
-                        return this.dragging === symbol;
+
+                    // Touch events
+                    handleTouchStart(e, symbol, source) {
+                        if ($wire.isAnimating) return;
+
+                        const touch = e.touches[0];
+                        this.dragging = symbol;
+                        this.dragSource = source;
+
+                        // Create floating drag element
+                        const rect = e.target.getBoundingClientRect();
+                        this.touchDragEl = e.target.cloneNode(true);
+                        this.touchDragEl.classList.add('spotit-touch-drag');
+                        this.touchDragEl.style.width = rect.width + 'px';
+                        this.touchDragEl.style.height = rect.height + 'px';
+                        this.touchDragEl.style.left = touch.clientX - rect.width / 2 + 'px';
+                        this.touchDragEl.style.top = touch.clientY - rect.height / 2 + 'px';
+                        document.body.appendChild(this.touchDragEl);
+
+                        e.target.classList.add('opacity-50', 'scale-95');
+                    },
+                    handleTouchMove(e) {
+                        if (!this.dragging || !this.touchDragEl) return;
+
+                        e.preventDefault();
+                        const touch = e.touches[0];
+
+                        // Move the floating element
+                        const rect = this.touchDragEl.getBoundingClientRect();
+                        this.touchDragEl.style.left = touch.clientX - rect.width / 2 + 'px';
+                        this.touchDragEl.style.top = touch.clientY - rect.height / 2 + 'px';
+                    },
+                    handleTouchEnd(e, originalTarget) {
+                        if (!this.dragging) return;
+
+                        originalTarget.classList.remove('opacity-50', 'scale-95');
+
+                        // Remove floating element
+                        if (this.touchDragEl) {
+                            this.touchDragEl.remove();
+                            this.touchDragEl = null;
+                        }
+
+                        // Find element under last touch point
+                        const touch = e.changedTouches[0];
+                        const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+
+                        if (elementBelow) {
+                            const dropZone = elementBelow.closest('[data-symbol]');
+                            if (dropZone && dropZone.dataset.source !== this.dragSource) {
+                                const targetSymbol = dropZone.dataset.symbol;
+                                let pileSymbol, handSymbol;
+
+                                if (this.dragSource === 'pile') {
+                                    pileSymbol = this.dragging;
+                                    handSymbol = targetSymbol;
+                                } else {
+                                    pileSymbol = targetSymbol;
+                                    handSymbol = this.dragging;
+                                }
+
+                                $wire.attemptMatch(pileSymbol, handSymbol);
+                            }
+                        }
+
+                        this.handleDragEnd();
                     }
                 }"
                 x-on:spotit-shake.window="shake = true; setTimeout(() => shake = false, 350)"
@@ -111,21 +174,24 @@
                         @foreach ($pileCard as $symbol)
                             <div
                                 wire:key="pile-{{ md5($symbol) }}"
+                                data-symbol="{{ $symbol }}"
+                                data-source="pile"
                                 draggable="true"
                                 x-on:dragstart="handleDragStart(@js($symbol), 'pile')"
                                 x-on:dragend="handleDragEnd()"
-                                x-on:dragover.prevent="dropTarget = 'pile-' + @js($symbol)"
-                                x-on:dragleave="dropTarget = null"
+                                x-on:dragover.prevent
                                 x-on:drop.prevent="handleDrop(@js($symbol), 'pile')"
+                                x-on:touchstart="handleTouchStart($event, @js($symbol), 'pile')"
+                                x-on:touchmove="handleTouchMove($event)"
+                                x-on:touchend="handleTouchEnd($event, $el)"
                                 x-bind:class="{
                                     'opacity-50 scale-95': dragging === @js($symbol) && dragSource === 'pile',
-                                    'ring-4 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615] border-transparent': isValidDropTarget(@js($symbol), 'pile'),
                                     'spotit-match spotit-match-pile': $wire.isAnimating && $wire.pendingPileSymbol === @js($symbol),
                                     'pointer-events-none opacity-70': $wire.isAnimating,
                                     'cursor-grab active:cursor-grabbing': !$wire.isAnimating
                                 }"
                                 @class([
-                                    'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all sm:text-4xl dark:bg-[#0a0a0a] select-none',
+                                    'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all sm:text-4xl dark:bg-[#0a0a0a] select-none touch-none',
                                     'border-[#19140035] dark:border-[#3E3E3A]',
                                 ])
                             >
@@ -160,21 +226,24 @@
                                 @foreach ($handCard as $symbol)
                                     <div
                                         wire:key="hand-{{ md5($symbol) }}"
+                                        data-symbol="{{ $symbol }}"
+                                        data-source="hand"
                                         draggable="true"
                                         x-on:dragstart="handleDragStart(@js($symbol), 'hand')"
                                         x-on:dragend="handleDragEnd()"
-                                        x-on:dragover.prevent="dropTarget = 'hand-' + @js($symbol)"
-                                        x-on:dragleave="dropTarget = null"
+                                        x-on:dragover.prevent
                                         x-on:drop.prevent="handleDrop(@js($symbol), 'hand')"
+                                        x-on:touchstart="handleTouchStart($event, @js($symbol), 'hand')"
+                                        x-on:touchmove="handleTouchMove($event)"
+                                        x-on:touchend="handleTouchEnd($event, $el)"
                                         x-bind:class="{
                                             'opacity-50 scale-95': dragging === @js($symbol) && dragSource === 'hand',
-                                            'ring-4 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-[#161615] border-transparent': isValidDropTarget(@js($symbol), 'hand'),
                                             'spotit-match spotit-match-hand': $wire.isAnimating && $wire.pendingMatchSymbol === @js($symbol),
                                             'pointer-events-none opacity-70': $wire.isAnimating,
                                             'cursor-grab active:cursor-grabbing': !$wire.isAnimating
                                         }"
                                         @class([
-                                            'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all sm:text-4xl dark:bg-[#0a0a0a] select-none',
+                                            'flex aspect-square items-center justify-center rounded-md border bg-[#FDFDFC] text-3xl shadow-sm transition-all sm:text-4xl dark:bg-[#0a0a0a] select-none touch-none',
                                             'border-[#19140035] dark:border-[#3E3E3A]',
                                         ])
                                     >
